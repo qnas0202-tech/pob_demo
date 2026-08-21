@@ -26,12 +26,17 @@ function preload() {
   this.load.audio("win", "audio/win.wav");
   this.load.audio("lose", "audio/lose.wav");
   this.load.audio("bgm", "audio/bgm.wav");
+  this.load.image("soundOnIcon", "assets/ui/sound-on.png");
+  this.load.image("soundOffIcon", "assets/ui/sound-off.png");
+  this.load.image("fullscreenEnterIcon", "assets/ui/fullscreen-enter.png");
+  this.load.image("fullscreenExitIcon", "assets/ui/fullscreen-exit.png");
 }
 
 function create() {
   this.state = {
     phase: "start",
     soundOn: false,
+    fullscreenOn: false,
     bossHp: 320,
     bossMaxHp: 320,
     bossHpLag: 1,
@@ -102,18 +107,26 @@ function create() {
   this.hpBarBg = this.add.rectangle(18, 56, 210, 12, 0x1a1a18).setOrigin(0, 0).setDepth(9);
   this.hpLagBar = this.add.rectangle(18, 56, 210, 12, 0xf0b24b).setOrigin(0, 0).setDepth(10);
   this.hpBar = this.add.rectangle(18, 56, 210, 12, 0xb43a35).setOrigin(0, 0).setDepth(11);
-  this.soundToggle = this.add.graphics().setDepth(31).setInteractive(new Phaser.Geom.Rectangle(W - 66, 66, 48, 42), Phaser.Geom.Rectangle.Contains);
+  this.soundToggle = this.add.image(W - 98, 86, "soundOffIcon").setDisplaySize(44, 44).setDepth(31).setInteractive({ useHandCursor: true });
+  this.fullscreenToggle = this.add.image(W - 46, 86, "fullscreenEnterIcon").setDisplaySize(44, 44).setDepth(31).setInteractive({ useHandCursor: true });
   this.soundToggle.on("pointerdown", () => toggleSound(this));
+  this.fullscreenToggle.on("pointerdown", () => toggleFullscreen(this));
   this.startPanel = this.add.rectangle(W / 2, H / 2, W, H, 0x050606, 0.72).setDepth(40);
   this.startText = text(this, W / 2, H / 2 - 74, "", 44).setOrigin(0.5).setDepth(41);
-  this.startSound = this.add.graphics().setDepth(41).setInteractive(new Phaser.Geom.Rectangle(W / 2 - 28, H / 2 - 22, 56, 44), Phaser.Geom.Rectangle.Contains);
+  this.startSound = this.add.image(W / 2 - 46, H / 2, "soundOffIcon").setDisplaySize(58, 58).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startFullscreen = this.add.image(W / 2 + 46, H / 2, "fullscreenEnterIcon").setDisplaySize(58, 58).setDepth(41).setInteractive({ useHandCursor: true });
   this.startHit = this.add.rectangle(W / 2, H / 2 + 72, 190, 62, 0x2a211b, 0.92).setDepth(41).setInteractive({ useHandCursor: true });
   this.startHit.setStrokeStyle(3, 0xf4f1e8, 0.9);
   this.startButton = text(this, W / 2, H / 2 + 72, "START", 26).setOrigin(0.5).setDepth(42).setInteractive({ useHandCursor: true });
   this.startSound.on("pointerdown", () => toggleSound(this));
-  drawSoundIcons(this);
+  this.startFullscreen.on("pointerdown", () => toggleFullscreen(this));
+  drawUiIcons(this);
   this.startHit.on("pointerdown", () => startGame(this));
   this.startButton.on("pointerdown", () => startGame(this));
+  document.addEventListener("fullscreenchange", () => {
+    this.state.fullscreenOn = !!document.fullscreenElement;
+    drawUiIcons(this);
+  });
 
   this.input.keyboard.on("keydown", (e) => {
     if (this.state.phase === "start" && e.code === "Space") startGame(this);
@@ -454,6 +467,7 @@ function startGame(scene) {
   scene.startPanel.setVisible(false);
   scene.startText.setVisible(false);
   scene.startSound.setVisible(false);
+  scene.startFullscreen.setVisible(false);
   scene.startButton.setVisible(false).disableInteractive();
   scene.startHit.setVisible(false).disableInteractive();
   startWalkSound(scene);
@@ -462,7 +476,7 @@ function startGame(scene) {
 function toggleSound(scene) {
   scene.state.soundOn = !scene.state.soundOn;
   scene.sound.mute = !scene.state.soundOn;
-  drawSoundIcons(scene);
+  drawUiIcons(scene);
   if (scene.state.soundOn && scene.state.phase !== "start" && !scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
 }
 
@@ -470,28 +484,21 @@ function safePlay(sound) {
   try { sound.play(); } catch (_) {}
 }
 
-function drawSoundIcons(scene) {
-  drawSpeaker(scene.soundToggle, W - 52, 86, scene.state.soundOn, 2);
-  drawSpeaker(scene.startSound, W / 2 - 18, H / 2 - 10, scene.state.soundOn, 3);
+function drawUiIcons(scene) {
+  scene.soundToggle.setTexture(scene.state.soundOn ? "soundOnIcon" : "soundOffIcon");
+  scene.startSound.setTexture(scene.state.soundOn ? "soundOnIcon" : "soundOffIcon");
+  scene.fullscreenToggle.setTexture(scene.state.fullscreenOn ? "fullscreenExitIcon" : "fullscreenEnterIcon");
+  scene.startFullscreen.setTexture(scene.state.fullscreenOn ? "fullscreenExitIcon" : "fullscreenEnterIcon");
 }
 
-function drawSpeaker(g, x, y, on, px) {
-  g.clear();
-  g.fillStyle(0x050606, 0.7).fillRect(x - 10, y - 10, 36, 30);
-  g.lineStyle(px, 0xf4f1e8, 1).strokeRect(x - 10, y - 10, 36, 30);
-  g.fillStyle(0xf4f1e8, 1);
-  g.fillRect(x - 3, y + 1, 7, 10);
-  g.fillRect(x + 4, y - 3, 6, 18);
-  g.fillTriangle(x + 10, y - 4, x + 19, y - 10, x + 19, y + 20);
-  if (on) {
-    g.lineStyle(px, 0x9fe870, 1);
-    g.lineBetween(x + 23, y - 2, x + 27, y + 4);
-    g.lineBetween(x + 27, y + 4, x + 23, y + 10);
-  } else {
-    g.lineStyle(px + 1, 0xff3b2f, 1);
-    g.lineBetween(x + 24, y - 3, x + 34, y + 15);
-    g.lineBetween(x + 34, y - 3, x + 24, y + 15);
-  }
+function toggleFullscreen(scene) {
+  const el = scene.game.canvas.parentElement || scene.game.canvas;
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else el.requestFullscreen?.().catch?.(() => {});
+  setTimeout(() => {
+    scene.state.fullscreenOn = !!document.fullscreenElement;
+    drawUiIcons(scene);
+  }, 120);
 }
 
 function text(scene, x, y, value, size) {

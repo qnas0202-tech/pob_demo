@@ -10,7 +10,7 @@
 }
 
 body {
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   display: grid;
   place-items: center;
@@ -19,7 +19,7 @@ body {
 
 main {
   width: min(100vw, 540px);
-  height: min(100vh, 960px);
+  height: min(100dvh, 960px);
 }
 
 #game {
