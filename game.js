@@ -19,13 +19,13 @@ function preload() {
   this.load.image("rubblePropsRaw", "godot/assets/generated/rubble_props.png");
   this.load.image("warrior", "godot/assets/generated/warrior2.png");
   this.load.image("archer", "godot/assets/generated/archer2.png");
-  this.load.audio("walk", "전진.wav");
-  this.load.audio("encounter", "전투 시작.wav");
-  this.load.audio("attack", "보스 자동 공격.wav");
-  this.load.audio("hit", "피격.wav");
-  this.load.audio("win", "승리.wav");
-  this.load.audio("lose", "패배.wav");
-  this.load.audio("bgm", "BGM.wav");
+  this.load.audio("walk", "audio/walk.wav");
+  this.load.audio("encounter", "audio/encounter.wav");
+  this.load.audio("attack", "audio/attack.wav");
+  this.load.audio("hit", "audio/hit.wav");
+  this.load.audio("win", "audio/win.wav");
+  this.load.audio("lose", "audio/lose.wav");
+  this.load.audio("bgm", "audio/bgm.wav");
 }
 
 function create() {
