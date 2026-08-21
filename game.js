@@ -13,23 +13,23 @@ new Phaser.Game({
 });
 
 function preload() {
-  this.load.image("floor", "godot/assets/generated/floor_road.png");
-  this.load.image("wall", "godot/assets/generated/wall_side.png");
-  this.load.image("cavePropsRaw", "godot/assets/generated/cave_props.png");
-  this.load.image("rubblePropsRaw", "godot/assets/generated/rubble_props.png");
-  this.load.image("warrior", "godot/assets/generated/warrior2.png");
-  this.load.image("archer", "godot/assets/generated/archer2.png");
-  this.load.audio("walk", "audio/walk.wav");
-  this.load.audio("encounter", "audio/encounter.wav");
-  this.load.audio("attack", "audio/attack.wav");
-  this.load.audio("hit", "audio/hit.wav");
-  this.load.audio("win", "audio/win.wav");
-  this.load.audio("lose", "audio/lose.wav");
-  this.load.audio("bgm", "audio/bgm.wav");
-  this.load.image("soundOnIcon", "assets/ui/sound-on.png");
-  this.load.image("soundOffIcon", "assets/ui/sound-off.png");
-  this.load.image("fullscreenEnterIcon", "assets/ui/fullscreen-enter.png");
-  this.load.image("fullscreenExitIcon", "assets/ui/fullscreen-exit.png");
+  this.load.image("floor", "godot/assets/generated_compressed/floor_road.png");
+  this.load.image("wall", "godot/assets/generated_compressed/wall_side.png");
+  this.load.image("cavePropsRaw", "godot/assets/generated_compressed/cave_props.png");
+  this.load.image("rubblePropsRaw", "godot/assets/generated_compressed/rubble_props.png");
+  this.load.image("warrior", "godot/assets/generated_compressed/warrior2.png");
+  this.load.image("archer", "godot/assets/generated_compressed/archer2.png");
+  this.load.audio("walk", "audio_compressed/walk.mp3");
+  this.load.audio("encounter", "audio_compressed/encounter.mp3");
+  this.load.audio("attack", "audio_compressed/attack.mp3");
+  this.load.audio("hit", "audio_compressed/hit.mp3");
+  this.load.audio("win", "audio_compressed/win.mp3");
+  this.load.audio("lose", "audio_compressed/lose.mp3");
+  this.load.audio("bgm", "audio_compressed/bgm.mp3");
+  this.load.image("soundOnIcon", "assets/ui_compressed/sound-on.png");
+  this.load.image("soundOffIcon", "assets/ui_compressed/sound-off.png");
+  this.load.image("fullscreenEnterIcon", "assets/ui_compressed/fullscreen-enter.png");
+  this.load.image("fullscreenExitIcon", "assets/ui_compressed/fullscreen-exit.png");
 }
 
 function create() {
