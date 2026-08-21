@@ -1,0 +1,26 @@
+78098b89c88a74ebe8c20117b8754620
+::res://::1787278686
+export_presets.cfg::TextFile::-1::1787278686::0::1::::<><><>0<>0<><>::
+::res://assets/::1787278500
+ASSETS.md::TextFile::-1::1787273105::0::1::::<><><>0<>0<><>::
+::res://assets/generated/::1787278535
+archer.png::CompressedTexture2D::7153407164259178664::1787278509::1787278535::1::::<><><>0<>0<>a0e7279aedf5e7c4aaf9e55cac9cc549<>res://.godot/imported/archer.png-cd7b9a2b8559fd2c180f815e471495a9.ctex::
+door.png::CompressedTexture2D::702988562045513097::1787278509::1787278535::1::::<><><>0<>0<>75e982acbdb1a50f0773951d519a74be<>res://.godot/imported/door.png-495dd9493aff4bd348c323f9f7a6d82d.ctex::
+floor.png::CompressedTexture2D::4581830154858522691::1787278509::1787278535::1::::<><><>0<>0<>10dda7673687a76867c4e93a8d9921e5<>res://.godot/imported/floor.png-0da7307196e897c2f9498ed3bd98654e.ctex::
+wall.png::CompressedTexture2D::8165811324428802743::1787278509::1787278535::1::::<><><>0<>0<>6a153c2e2aefe97c611ab034061d85e5<>res://.godot/imported/wall.png-6df74fa3bd62368e362aa15d351f1e1c.ctex::
+warrior.png::CompressedTexture2D::879456915220463955::1787278509::1787278535::1::::<><><>0<>0<>e39c8788fa6d1b265ea7e02b451e1cc7<>res://.godot/imported/warrior.png-402f6ec23f822c5a518a69bcfdb9cce0.ctex::
+::res://assets/kenney_modular_dungeon/::1787273091
+License.txt::TextFile::-1::1770625756::0::1::::<><><>0<>0<><>::
+::res://assets/kenney_modular_dungeon/Models/::1787273091
+::res://assets/kenney_modular_dungeon/Models/GLB format/::1787273111
+corridor-wide.glb::PackedScene::7344357904573939843::1770625758::1787273111::1::::<><><>0<>0<>e678eef377597ad8e903e6d794fa037c<>res://.godot/imported/corridor-wide.glb-f4e1b7e59e6b16b9514c43279ceca5f0.scn::uid://dyoqg0aeli243::::res://assets/kenney_modular_dungeon/Models/GLB format/Textures/colormap.png
+gate-door.glb::PackedScene::6344324435657059679::1770625758::1787273111::1::::<><><>0<>0<>5b5142e8a1fc15cf82b90a0aa29f8610<>res://.godot/imported/gate-door.glb-899850cc3175a0a82a33d23212d6e622.scn::uid://dyoqg0aeli243::::res://assets/kenney_modular_dungeon/Models/GLB format/Textures/colormap.png
+room-large.glb::PackedScene::5450855462796828555::1770625758::1787273111::1::::<><><>0<>0<>202dca471546ce12a6fec8cbd53b0dc8<>res://.godot/imported/room-large.glb-59279b6d2088888b2e4404e9c6251b5e.scn::uid://dyoqg0aeli243::::res://assets/kenney_modular_dungeon/Models/GLB format/Textures/colormap.png
+room-wide.glb::PackedScene::7676792875636820073::1770625759::1787273111::1::::<><><>0<>0<>a5e1af7f589ece5057e13bf89556febb<>res://.godot/imported/room-wide.glb-17b12532d9e6ebf32deaee34d2b16853.scn::uid://dyoqg0aeli243::::res://assets/kenney_modular_dungeon/Models/GLB format/Textures/colormap.png
+::res://assets/kenney_modular_dungeon/Models/GLB format/Textures/::1787273111
+colormap.png::CompressedTexture2D::8873679086877151698::1770625759::1787273111::1::::<><><>0<>0<>ebd6d782438cbb8c72c7ff16571c7383<>res://.godot/imported/colormap.png-9cdff63ac2850c588396a803d0c89d26.ctex::
+::res://assets/pixel/::1787272964
+::res://scenes/::1787273036
+main.tscn::PackedScene::-1::1787273036::0::1::::<><><>0<>0<><>::res://scripts/Main.gd
+::res://scripts/::1787275468
+Main.gd::GDScript::6764423464161858561::1787278527::0::1::::<>Node3D<><>0<>0<><>::
