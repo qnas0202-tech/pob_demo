@@ -13,12 +13,13 @@ new Phaser.Game({
 });
 
 function preload() {
-  this.load.image("floor", "godot/assets/generated_compressed/floor_road.png");
-  this.load.image("wall", "godot/assets/generated_compressed/wall_side.png");
-  this.load.image("cavePropsRaw", "godot/assets/generated_compressed/cave_props.png");
-  this.load.image("rubblePropsRaw", "godot/assets/generated_compressed/rubble_props.png");
-  this.load.image("warrior", "godot/assets/generated_compressed/warrior2.png");
-  this.load.image("archer", "godot/assets/generated_compressed/archer2.png");
+  drawLoadingScreen(this);
+  this.load.image("floor", "godot/assets/generated_webp/floor_road.webp");
+  this.load.image("wall", "godot/assets/generated_webp/wall_side.webp");
+  this.load.image("cavePropsRaw", "godot/assets/generated_webp/cave_props.webp");
+  this.load.image("rubblePropsRaw", "godot/assets/generated_webp/rubble_props.webp");
+  this.load.image("warrior", "godot/assets/generated_webp/warrior2.webp");
+  this.load.image("archer", "godot/assets/generated_webp/archer2.webp");
   this.load.audio("walk", "audio_compressed/walk.mp3");
   this.load.audio("encounter", "audio_compressed/encounter.mp3");
   this.load.audio("attack", "audio_compressed/attack.mp3");
@@ -26,13 +27,14 @@ function preload() {
   this.load.audio("win", "audio_compressed/win.mp3");
   this.load.audio("lose", "audio_compressed/lose.mp3");
   this.load.audio("bgm", "audio_compressed/bgm.mp3");
-  this.load.image("soundOnIcon", "assets/ui_compressed/sound-on.png");
-  this.load.image("soundOffIcon", "assets/ui_compressed/sound-off.png");
-  this.load.image("fullscreenEnterIcon", "assets/ui_compressed/fullscreen-enter.png");
-  this.load.image("fullscreenExitIcon", "assets/ui_compressed/fullscreen-exit.png");
+  this.load.image("soundOnIcon", "assets/ui_webp/sound-on.webp");
+  this.load.image("soundOffIcon", "assets/ui_webp/sound-off.webp");
+  this.load.image("fullscreenEnterIcon", "assets/ui_webp/fullscreen-enter.webp");
+  this.load.image("fullscreenExitIcon", "assets/ui_webp/fullscreen-exit.webp");
 }
 
 function create() {
+  this.loadingGroup?.destroy(true);
   this.state = {
     phase: "start",
     soundOn: false,
@@ -499,6 +501,38 @@ function toggleFullscreen(scene) {
     scene.state.fullscreenOn = !!document.fullscreenElement;
     drawUiIcons(scene);
   }, 120);
+}
+
+function drawLoadingScreen(scene) {
+  const g = scene.add.graphics().setDepth(100);
+  const title = scene.add.text(W / 2, H / 2 - 76, "LOADING", {
+    fontFamily: "system-ui, sans-serif",
+    fontSize: "30px",
+    fontStyle: "900",
+    color: "#f4f1e8",
+    stroke: "#050606",
+    strokeThickness: 6,
+  }).setOrigin(0.5).setDepth(101);
+  const percent = scene.add.text(W / 2, H / 2 + 42, "0%", {
+    fontFamily: "system-ui, sans-serif",
+    fontSize: "18px",
+    fontStyle: "800",
+    color: "#f4f1e8",
+    stroke: "#050606",
+    strokeThickness: 4,
+  }).setOrigin(0.5).setDepth(101);
+  scene.loadingGroup = scene.add.container(0, 0, [g, title, percent]).setDepth(100);
+  const paint = (value) => {
+    g.clear();
+    g.fillStyle(0x050606, 1).fillRect(0, 0, W, H);
+    g.fillStyle(0x15100d, 1).fillRect(W / 2 - 156, H / 2 - 12, 312, 24);
+    g.lineStyle(4, 0xf4c15d, 1).strokeRect(W / 2 - 156, H / 2 - 12, 312, 24);
+    g.fillStyle(0xb43a35, 1).fillRect(W / 2 - 148, H / 2 - 4, 296 * value, 8);
+    g.fillStyle(0xf0b24b, 1).fillRect(W / 2 - 148, H / 2 + 5, 296 * value, 4);
+    percent.setText(`${Math.round(value * 100)}%`);
+  };
+  paint(0);
+  scene.load.on("progress", paint);
 }
 
 function text(scene, x, y, value, size) {
