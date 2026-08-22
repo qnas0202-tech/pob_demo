@@ -681,6 +681,7 @@ function startBoardMode(scene) {
     step: "choose",
     tab: "dungeon",
     selectedBoss: "slime",
+    chosenName: "",
     dungeon: { name: "축축한 동굴", area: 18, floor: "B1F", households: 2, monsters: 12, capacity: 20, bosses: 1, asset: 1250, notoriety: 42, soul: 320, gem: 125, stage: 0 },
     bosses: [
       { id: "slime", name: "슬라임", lv: 3, hp: 80, maxHp: 80, atk: 18, def: 6, trait: "좁은 통로 통과 가능", status: "상주", recruited: true, discovered: true },
@@ -695,14 +696,24 @@ function startBoardMode(scene) {
     ],
     logs: ["던전 지배권을 확보했다.", "축축한 동굴 18평에서 시작한다."],
     battle: null,
+    invasion: false,
     powerUsed: false,
+    dwellers: Array.from({ length: 10 }, (_, i) => ({ x: 90 + (i % 5) * 80, y: 255 + Math.floor(i / 5) * 85, dx: (i % 2 ? 1 : -1) * 12, dy: (i % 3 ? 1 : -1) * 8 })),
+    exploreRun: null,
   };
   renderBoard(scene);
 }
 
 function updateBoard(scene, dt) {
   scene.flash.setAlpha(Math.max(0, scene.flash.alpha - dt * 4));
-  if (!scene.board || scene.board.step !== "battle") return;
+  if (!scene.board) return;
+  for (const m of scene.board.dwellers || []) {
+    m.x += m.dx * dt; m.y += m.dy * dt;
+    if (m.x < 55 || m.x > 470) m.dx *= -1;
+    if (m.y < 220 || m.y > 465) m.dy *= -1;
+  }
+  if (scene.board.tab === "dungeon" && scene.board.step === "main") renderBoard(scene);
+  if (scene.board.step !== "battle") return;
   const b = scene.board.battle;
   b.timer += dt;
   if (b.timer < 0.9 || b.result) return;
@@ -734,7 +745,9 @@ function renderBoard(scene) {
   addText(scene, c, 150, 18, `Soul ${b.dungeon.soul}`, 15, "#f0c45c");
   addText(scene, c, 285, 18, `Gem ${b.dungeon.gem}`, 15, "#7fd8ff");
   if (b.step === "choose") return renderChoose(scene, c);
+  if (b.step === "chosen") return renderChosenSlime(scene, c);
   if (b.step === "battle") return renderBattle(scene, c);
+  if (b.step === "exploreRun") return renderExploreRun(scene, c);
   if (b.tab === "dungeon") renderDungeon(scene, c);
   if (b.tab === "explore") renderExplore(scene, c);
   if (b.tab === "boss") renderBosses(scene, c);
@@ -746,12 +759,27 @@ function renderChoose(scene, c) {
   addText(scene, c, 28, 120, "최초의 필드보스를 선택하십시오", 24, "#f4f1e8");
   [["오크 군주", 90], ["리치", 210], ["늪의 마녀", 330]].forEach(([name, x]) => {
     addButton(scene, c, x, 250, 110, 140, name, () => {
-      scene.board.step = "main";
-      scene.board.logs.unshift(`${name} 선택 결과: 슬라임이 배정되었다.`);
+      scene.board.chosenName = name;
+      scene.board.step = "chosen";
+      scene.board.logs.unshift(`${name} 선택 요청이 접수되었다.`);
       renderBoard(scene);
-    });
+    }, "power");
   });
   addText(scene, c, 42, 450, "무엇을 고르든 현재 던전이 감당 가능한 존재는 슬라임뿐이다.", 15, "#aab0aa");
+}
+
+function renderChosenSlime(scene, c) {
+  addText(scene, c, 32, 92, `${scene.board.chosenName} 소환 의식`, 26, "#f4f1e8");
+  addPanel(scene, c, 32, 148, 476, 110, ["심사 결과", "던전 규모: 18평", "마력 수용량: 매우 낮음", "권장 필드보스 등급: 하급"]);
+  addText(scene, c, 56, 322, "실제 배정 필드보스", 18, "#aab0aa");
+  addSlime(scene, c, W / 2, 430, 2.4);
+  addText(scene, c, W / 2 - 42, 510, "슬라임", 34, "#8cff7a");
+  addText(scene, c, 44, 575, "축하합니다. 현재 던전에는 이 정도가 딱 맞습니다.", 16, "#f0b24b");
+  addButton(scene, c, 150, 660, 240, 72, "던전 입주", () => {
+    scene.board.step = "main";
+    scene.board.logs.unshift(`${scene.board.chosenName} 대신 슬라임이 입주했다.`);
+    renderBoard(scene);
+  }, "growth");
 }
 
 function renderDungeon(scene, c) {
@@ -763,8 +791,13 @@ function renderDungeon(scene, c) {
     addText(scene, c, x-28, y-8, n, 16, "#f4f1e8");
   });
   addSlime(scene, c, 78, 330, 1.1);
-  addButton(scene, c, 24, 555, 220, 74, "용사 침입 대응", () => startBoardBattle(scene));
-  addButton(scene, c, 270, 555, 220, 74, d.stage === 0 ? "42평 확장" : d.stage === 1 ? "84평 확장" : "확장 완료", () => expandDungeon(scene));
+  for (const m of scene.board.dwellers) {
+    const dot = scene.add.circle(m.x, m.y, 4, 0x8bd17c, 0.9).setDepth(62);
+    c.add(dot);
+  }
+  if (!scene.board.invasion) addButton(scene, c, 24, 555, 220, 74, "침입 경고 발생", () => { scene.board.invasion = true; scene.board.logs.unshift("거주구 쪽에서 용사 침입 경고가 울렸다."); renderBoard(scene); }, "danger");
+  else addPanel(scene, c, 24, 535, 220, 104, ["용사 침입!", "B1F · 거주구", "발생 시간 09:27"]), addButton(scene, c, 78, 608, 112, 34, "대응하기", () => startBoardBattle(scene), "danger");
+  addButton(scene, c, 270, 555, 220, 74, d.stage === 0 ? "42평 확장" : d.stage === 1 ? "84평 확장" : "확장 완료", () => expandDungeon(scene), "growth");
   addPanel(scene, c, 24, 665, 492, 130, ["던전 현황", `입주 몬스터 ${d.monsters}/${d.capacity}`, `상주 필드보스 ${d.bosses}`, `자산 가치 ${d.asset} Soul`]);
 }
 
@@ -776,7 +809,7 @@ function renderExplore(scene, c) {
     addRect(scene, c, 24, y, 492, 105, locked ? 0x0b0d0d : 0x101513, 1, locked ? 0x333333 : 0x314832);
     addText(scene, c, 42, y + 18, `${a.name}  난이도 ${a.diff}`, 18, locked ? "#777" : "#f4f1e8");
     addText(scene, c, 42, y + 52, locked ? `악명 ${a.req} 필요` : `발견 ${a.progress}/${a.max}`, 15, locked ? "#c55" : "#8bd17c");
-    if (!locked) addButton(scene, c, 388, y + 30, 92, 42, "진행", () => exploreArea(scene, i));
+    if (!locked) addButton(scene, c, 388, y + 30, 92, 42, "탐험", () => startExploreRun(scene, i), "explore");
   });
 }
 
@@ -802,10 +835,11 @@ function renderBattle(scene, c) {
   drawHp(scene, c, 70, 390, 170, b.bossHp / b.bossMax, "슬라임", `${b.bossHp}/${b.bossMax}`);
   drawHp(scene, c, 300, 390, 170, b.heroHp / b.heroMax, "용사 파티", `${b.heroHp}/${b.heroMax}`);
   addText(scene, c, 24, 505, "지배자의 권능", 20, "#f4f1e8");
-  addButton(scene, c, 24, 545, 145, 60, "회복", () => usePower(scene, "heal"));
-  addButton(scene, c, 198, 545, 145, 60, "약화", () => usePower(scene, "weaken"));
-  addButton(scene, c, 372, 545, 145, 60, "보호막", () => usePower(scene, "shield"));
-  if (b.result) addButton(scene, c, 150, 645, 240, 62, b.result === "win" ? "결과 반영" : "귀환", () => { scene.board.step = "main"; scene.board.tab = "dungeon"; renderBoard(scene); });
+  const powerKind = scene.board.powerUsed ? "disabled" : "power";
+  addButton(scene, c, 24, 545, 145, 60, "회복", () => usePower(scene, "heal"), powerKind);
+  addButton(scene, c, 198, 545, 145, 60, "약화", () => usePower(scene, "weaken"), powerKind);
+  addButton(scene, c, 372, 545, 145, 60, "보호막", () => usePower(scene, "shield"), powerKind);
+  if (b.result) addButton(scene, c, 150, 645, 240, 62, b.result === "win" ? "결과 반영" : "귀환", () => { scene.board.step = "main"; scene.board.tab = "dungeon"; renderBoard(scene); }, "primary");
   addPanel(scene, c, 24, 730, 492, 150, scene.board.logs.slice(0, 5));
 }
 
@@ -816,12 +850,45 @@ function renderRecords(scene, c) {
 
 function renderTabs(scene, c) {
   [["던전","dungeon",20],["탐험","explore",150],["보스","boss",280],["기록","record",410]].forEach(([label, tab, x]) => {
-    addButton(scene, c, x, H - 86, 110, 58, label, () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab);
+    addButton(scene, c, x, H - 86, 110, 58, label, () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab ? "tabActive" : "tab");
   });
+}
+
+function startExploreRun(scene, idx) {
+  const area = scene.board.areas[idx];
+  scene.board.step = "exploreRun";
+  scene.board.exploreRun = { idx, node: 0, nodes: ["입구 정찰", "자원 발견", idx === 0 ? "낯선 흔적" : "귀환로 확보"] };
+  scene.board.logs.unshift(`${area.name} 탐험을 시작했다.`);
+  renderBoard(scene);
+}
+
+function renderExploreRun(scene, c) {
+  const run = scene.board.exploreRun;
+  const area = scene.board.areas[run.idx];
+  addText(scene, c, 24, 76, area.name, 26, "#f4f1e8");
+  addText(scene, c, 24, 116, "슬라임이 외부 지역을 탐험 중", 16, "#c9c2b8");
+  run.nodes.forEach((n, i) => {
+    const x = 78 + i * 155;
+    addRect(scene, c, x - 42, 235, 84, 84, i < run.node ? 0x17361d : i === run.node ? 0x143048 : 0x101313, 1, i <= run.node ? 0x54aee8 : 0x333b3b);
+    addText(scene, c, x - 32, 335, n, 14, i <= run.node ? "#f4f1e8" : "#777");
+  });
+  addPanel(scene, c, 32, 430, 476, 150, run.node === 0 ? ["사건", "폐광 입구가 무너져 있다.", "슬라임은 좁은 틈으로 통과할 수 있다."] : run.node === 1 ? ["발견", "낡은 Soul 광맥을 찾았다.", "탐험 보상: Soul +35"] : ["흔적", "벽면에 외눈박이 표식이 있다.", "새 필드보스의 존재가 확인됐다."]);
+  addButton(scene, c, 150, 640, 240, 66, run.node >= run.nodes.length - 1 ? "귀환" : "다음 노드", () => progressExploreRun(scene), "explore");
+}
+
+function progressExploreRun(scene) {
+  const run = scene.board.exploreRun;
+  if (run.node < run.nodes.length - 1) { run.node += 1; scene.board.dungeon.soul += 35; scene.board.logs.unshift(`탐험 노드 진행: ${run.nodes[run.node]}`); return renderBoard(scene); }
+  exploreArea(scene, run.idx);
+  scene.board.step = "main";
+  scene.board.tab = "explore";
+  scene.board.exploreRun = null;
+  renderBoard(scene);
 }
 
 function startBoardBattle(scene) {
   scene.board.step = "battle";
+  scene.board.invasion = false;
   scene.board.powerUsed = false;
   scene.board.battle = { timer: 0, bossHp: 80, bossMax: 80, bossAtk: 18, heroHp: 60, heroMax: 60, heroAtk: 9, result: null };
   scene.board.logs.unshift("용사 파티가 던전에 침입했다.");
@@ -871,10 +938,22 @@ function addText(scene, c, x, y, value, size, color = "#f4f1e8") {
   c.add(t); return t;
 }
 
-function addButton(scene, c, x, y, w, h, label, fn, active = false) {
-  const r = addRect(scene, c, x, y, w, h, active ? 0x1d4a22 : 0x151817, 1, active ? 0x65c45c : 0x343b38).setInteractive({ useHandCursor: true });
-  const t = addText(scene, c, x + w / 2, y + h / 2 - 10, label, 16, active ? "#9cff8a" : "#f4f1e8").setOrigin(0.5);
-  r.on("pointerdown", fn); t.setInteractive({ useHandCursor: true }).on("pointerdown", fn);
+function addButton(scene, c, x, y, w, h, label, fn, kind = "default") {
+  const styles = {
+    default: [0x151817, 0x343b38, "#f4f1e8"],
+    primary: [0x1e3f68, 0x66b6ff, "#d9efff"],
+    danger: [0x3a1214, 0xd85252, "#ffb2a8"],
+    growth: [0x17361d, 0x69c95f, "#b6ff9c"],
+    explore: [0x143048, 0x54aee8, "#b8e8ff"],
+    power: [0x351846, 0xb96cff, "#efc9ff"],
+    disabled: [0x191919, 0x333333, "#777777"],
+    tab: [0x101313, 0x2f3635, "#c9c2b8"],
+    tabActive: [0x1d4a22, 0x65c45c, "#9cff8a"],
+  };
+  const [fill, stroke, color] = styles[kind] || styles.default;
+  const r = addRect(scene, c, x, y, w, h, fill, 1, stroke).setInteractive({ useHandCursor: kind !== "disabled" });
+  const t = addText(scene, c, x + w / 2, y + h / 2 - 10, label, 16, color).setOrigin(0.5);
+  if (kind !== "disabled") { r.on("pointerdown", fn); t.setInteractive({ useHandCursor: true }).on("pointerdown", fn); }
   return r;
 }
 
