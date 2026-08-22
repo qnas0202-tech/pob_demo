@@ -483,11 +483,11 @@ function startGame(scene) {
   scene.state.phase = "walk";
   scene.startPanel.setVisible(false);
   scene.startText.setVisible(false);
-  scene.startModeA.setVisible(false);
-  scene.startModeB.setVisible(false);
-  scene.startModeC.setVisible(false);
-  scene.startSound.setVisible(false);
-  scene.startFullscreen.setVisible(false);
+  scene.startModeA.setVisible(false).disableInteractive();
+  scene.startModeB.setVisible(false).disableInteractive();
+  scene.startModeC.setVisible(false).disableInteractive();
+  scene.startSound.setVisible(false).disableInteractive();
+  scene.startFullscreen.setVisible(false).disableInteractive();
   scene.startButton.setVisible(false).disableInteractive();
   scene.startHit.setVisible(false).disableInteractive();
   startWalkSound(scene);
@@ -666,11 +666,11 @@ function startBoardMode(scene) {
   scene.state.phase = "board";
   scene.startPanel.setVisible(false);
   scene.startText.setVisible(false);
-  scene.startModeA.setVisible(false);
-  scene.startModeB.setVisible(false);
-  scene.startModeC.setVisible(false);
-  scene.startSound.setVisible(false);
-  scene.startFullscreen.setVisible(false);
+  scene.startModeA.setVisible(false).disableInteractive();
+  scene.startModeB.setVisible(false).disableInteractive();
+  scene.startModeC.setVisible(false).disableInteractive();
+  scene.startSound.setVisible(false).disableInteractive();
+  scene.startFullscreen.setVisible(false).disableInteractive();
   scene.startButton.setVisible(false).disableInteractive();
   scene.startHit.setVisible(false).disableInteractive();
   scene.enemy.setVisible(false);
@@ -712,7 +712,6 @@ function updateBoard(scene, dt) {
     if (m.x < 55 || m.x > 470) m.dx *= -1;
     if (m.y < 220 || m.y > 465) m.dy *= -1;
   }
-  if (scene.board.tab === "dungeon" && scene.board.step === "main") renderBoard(scene);
   if (scene.board.step !== "battle") return;
   const b = scene.board.battle;
   b.timer += dt;
