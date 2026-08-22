@@ -37,6 +37,10 @@ function create() {
   this.loadingGroup?.destroy(true);
   this.state = {
     phase: "start",
+    mode: "scroll",
+    rayX: 2.5,
+    rayY: 8.5,
+    rayDir: -Math.PI / 2,
     soundOn: false,
     fullscreenOn: false,
     bossHp: 320,
@@ -115,14 +119,21 @@ function create() {
   this.fullscreenToggle.on("pointerdown", () => toggleFullscreen(this));
   this.startPanel = this.add.rectangle(W / 2, H / 2, W, H, 0x050606, 0.72).setDepth(40);
   this.startText = text(this, W / 2, H / 2 - 74, "", 44).setOrigin(0.5).setDepth(41);
+  this.startModeA = text(this, W / 2 - 132, H / 2 - 68, "SCROLL", 15).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeB = text(this, W / 2, H / 2 - 68, "PSEUDO-3D", 15).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeC = text(this, W / 2 + 132, H / 2 - 68, "BOARD", 15).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
   this.startSound = this.add.image(W / 2 - 46, H / 2, "soundOffIcon").setDisplaySize(58, 58).setDepth(41).setInteractive({ useHandCursor: true });
   this.startFullscreen = this.add.image(W / 2 + 46, H / 2, "fullscreenEnterIcon").setDisplaySize(58, 58).setDepth(41).setInteractive({ useHandCursor: true });
   this.startHit = this.add.rectangle(W / 2, H / 2 + 72, 190, 62, 0x2a211b, 0.92).setDepth(41).setInteractive({ useHandCursor: true });
   this.startHit.setStrokeStyle(3, 0xf4f1e8, 0.9);
   this.startButton = text(this, W / 2, H / 2 + 72, "START", 26).setOrigin(0.5).setDepth(42).setInteractive({ useHandCursor: true });
+  this.startModeA.on("pointerdown", () => setMode(this, "scroll"));
+  this.startModeB.on("pointerdown", () => setMode(this, "raycast"));
+  this.startModeC.on("pointerdown", () => setMode(this, "board"));
   this.startSound.on("pointerdown", () => toggleSound(this));
   this.startFullscreen.on("pointerdown", () => toggleFullscreen(this));
   drawUiIcons(this);
+  setMode(this, "scroll");
   this.startHit.on("pointerdown", () => startGame(this));
   this.startButton.on("pointerdown", () => startGame(this));
   document.addEventListener("fullscreenchange", () => {
@@ -140,6 +151,7 @@ function update(_, deltaMs) {
   const dt = deltaMs / 1000;
   const s = this.state;
   s.timer += dt;
+  if (s.mode === "board" && s.phase === "board") return updateBoard(this, dt);
   drawCorridor(this);
   this.flash.setAlpha(Math.max(0, this.flash.alpha - dt * 4));
 
@@ -147,6 +159,7 @@ function update(_, deltaMs) {
     startWalkSound(this);
     s.road += dt * 0.5;
     s.walkScroll += dt * 0.5;
+    if (s.mode === "raycast") advanceRay(this, dt * 0.65);
     this.enemy.setVisible(false);
     this.enemyHpBg.setVisible(false);
     this.enemyHpLagBar.setVisible(false);
@@ -178,6 +191,7 @@ function update(_, deltaMs) {
 
 function drawCorridor(scene) {
   const g = scene.corridor;
+  if (scene.state.mode === "raycast") return drawRaycastView(scene);
   const offset = (scene.state.walkScroll * 180) % 82;
   drawProjectedFloor(scene);
   g.clear();
@@ -465,14 +479,25 @@ function startWalkSound(scene) {
 function startGame(scene) {
   scene.startButton.setText("START");
   scene.startHit.setAlpha(0.92);
+  if (scene.state.mode === "board") return startBoardMode(scene);
   scene.state.phase = "walk";
   scene.startPanel.setVisible(false);
   scene.startText.setVisible(false);
+  scene.startModeA.setVisible(false);
+  scene.startModeB.setVisible(false);
+  scene.startModeC.setVisible(false);
   scene.startSound.setVisible(false);
   scene.startFullscreen.setVisible(false);
   scene.startButton.setVisible(false).disableInteractive();
   scene.startHit.setVisible(false).disableInteractive();
   startWalkSound(scene);
+}
+
+function setMode(scene, mode) {
+  scene.state.mode = mode;
+  scene.startModeA.setColor(mode === "scroll" ? "#f0b24b" : "#f4f1e8");
+  scene.startModeB.setColor(mode === "raycast" ? "#f0b24b" : "#f4f1e8");
+  scene.startModeC.setColor(mode === "board" ? "#f0b24b" : "#f4f1e8");
 }
 
 function toggleSound(scene) {
@@ -501,6 +526,83 @@ function toggleFullscreen(scene) {
     scene.state.fullscreenOn = !!document.fullscreenElement;
     drawUiIcons(scene);
   }, 120);
+}
+
+const RAY_MAP = [
+  "1111111",
+  "1000001",
+  "1011101",
+  "1000101",
+  "1110101",
+  "1000001",
+  "1011111",
+  "1000001",
+  "1111111",
+];
+
+function advanceRay(scene, step) {
+  const s = scene.state;
+  const nx = s.rayX + Math.cos(s.rayDir) * step;
+  const ny = s.rayY + Math.sin(s.rayDir) * step;
+  if (RAY_MAP[Math.floor(ny)]?.[Math.floor(nx)] === "0") { s.rayX = nx; s.rayY = ny; return; }
+  s.rayDir += Math.PI / 2;
+}
+
+function drawRaycastView(scene) {
+  const g = scene.corridor;
+  const tex = scene.floorCanvas;
+  const ctx = tex.context;
+  const wall = scene.textures.get("wall").getSourceImage();
+  const floor = scene.textures.get("floor").getSourceImage();
+  const fov = Math.PI / 3;
+  const horizon = Math.floor(H * 0.48);
+  ctx.clearRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#101615";
+  ctx.fillRect(0, 0, W, horizon);
+
+  const floorSpeed = scene.state.walkScroll * 280;
+  for (let y = horizon; y < H; y += 4) {
+    const p = (y - horizon) / (H - horizon);
+    const depth = 1 / Math.max(0.05, p);
+    const roadW = Phaser.Math.Linear(90, W * 1.35, p * p);
+    const left = W / 2 - roadW / 2;
+    const sampleW = Math.floor(floor.width * Phaser.Math.Clamp(0.45 + p * 0.5, 0.45, 0.95));
+    const sampleX = Math.floor((floor.width - sampleW) / 2);
+    const sampleY = Math.floor((floorSpeed + depth * 220) % (floor.height - 24));
+    const sampleH = Math.floor(8 + p * 28);
+    ctx.globalAlpha = Phaser.Math.Clamp(0.35 + p * 0.7, 0.35, 1);
+    ctx.drawImage(floor, sampleX, sampleY, sampleW, sampleH, left, y, roadW, 4);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(0, horizon, W, 80);
+
+  for (let x = 0; x < W; x += 3) {
+    const ray = scene.state.rayDir - fov / 2 + (x / W) * fov;
+    let dist = 0.05, hitX = 0, hitY = 0, hit = false;
+    while (!hit && dist < 8) {
+      hitX = scene.state.rayX + Math.cos(ray) * dist;
+      hitY = scene.state.rayY + Math.sin(ray) * dist;
+      hit = RAY_MAP[Math.floor(hitY)]?.[Math.floor(hitX)] !== "0";
+      if (!hit) dist += 0.025;
+    }
+    const corrected = dist * Math.cos(ray - scene.state.rayDir);
+    const wallH = Math.min(H, H / Math.max(0.18, corrected));
+    const y = H / 2 - wallH / 2 + 80;
+    const fracX = Math.abs(hitX - Math.floor(hitX));
+    const fracY = Math.abs(hitY - Math.floor(hitY));
+    const sampleX = Math.floor((Math.abs(fracX - 0.5) > Math.abs(fracY - 0.5) ? fracY : fracX) * wall.width) % wall.width;
+    ctx.globalAlpha = Phaser.Math.Clamp(1.05 - corrected * 0.1, 0.35, 0.95);
+    ctx.drawImage(wall, sampleX, 0, 3, wall.height, x, y, 3, wallH);
+    ctx.fillStyle = `rgba(0,0,0,${Phaser.Math.Clamp(corrected * 0.08, 0.05, 0.55)})`;
+    ctx.fillRect(x, y, 3, wallH);
+  }
+  ctx.globalAlpha = 1;
+  tex.refresh();
+  g.clear();
+  g.fillStyle(0x000000, 0.16).fillRect(0, 0, W, H);
+  for (const prop of scene.props) prop.sprite.setVisible(false);
 }
 
 function drawLoadingScreen(scene) {
@@ -558,4 +660,239 @@ function keyGreen(scene, sourceKey, targetKey) {
   }
   ctx.putImageData(image, 0, 0);
   tex.refresh();
+}
+
+function startBoardMode(scene) {
+  scene.state.phase = "board";
+  scene.startPanel.setVisible(false);
+  scene.startText.setVisible(false);
+  scene.startModeA.setVisible(false);
+  scene.startModeB.setVisible(false);
+  scene.startModeC.setVisible(false);
+  scene.startSound.setVisible(false);
+  scene.startFullscreen.setVisible(false);
+  scene.startButton.setVisible(false).disableInteractive();
+  scene.startHit.setVisible(false).disableInteractive();
+  scene.enemy.setVisible(false);
+  scene.enemyHpBg.setVisible(false);
+  scene.enemyHpLagBar.setVisible(false);
+  scene.enemyHpBar.setVisible(false);
+  scene.board = {
+    step: "choose",
+    tab: "dungeon",
+    selectedBoss: "slime",
+    dungeon: { name: "축축한 동굴", area: 18, floor: "B1F", households: 2, monsters: 12, capacity: 20, bosses: 1, asset: 1250, notoriety: 42, soul: 320, gem: 125, stage: 0 },
+    bosses: [
+      { id: "slime", name: "슬라임", lv: 3, hp: 80, maxHp: 80, atk: 18, def: 6, trait: "좁은 통로 통과 가능", status: "상주", recruited: true, discovered: true },
+      { id: "bat", name: "외눈박이 그룸", lv: 1, hp: 65, maxHp: 65, atk: 14, def: 3, trait: "어둠 지역 탐색", status: "발견", recruited: false, discovered: true },
+      { id: "orc", name: "오크 대장", lv: 2, hp: 120, maxHp: 120, atk: 24, def: 10, trait: "전투 보너스", status: "미발견", recruited: false, discovered: false },
+      { id: "witch", name: "늪의 마녀", lv: 2, hp: 70, maxHp: 70, atk: 28, def: 4, trait: "약화 권능 강화", status: "미발견", recruited: false, discovered: false },
+    ],
+    areas: [
+      { name: "버려진 폐광", diff: "★", req: 0, progress: 2, max: 4, done: false },
+      { name: "지하 수로", diff: "★★", req: 60, progress: 1, max: 4, done: false },
+      { name: "고대 묘지", diff: "★★", req: 200, progress: 0, max: 5, done: false },
+    ],
+    logs: ["던전 지배권을 확보했다.", "축축한 동굴 18평에서 시작한다."],
+    battle: null,
+    powerUsed: false,
+  };
+  renderBoard(scene);
+}
+
+function updateBoard(scene, dt) {
+  scene.flash.setAlpha(Math.max(0, scene.flash.alpha - dt * 4));
+  if (!scene.board || scene.board.step !== "battle") return;
+  const b = scene.board.battle;
+  b.timer += dt;
+  if (b.timer < 0.9 || b.result) return;
+  b.timer = 0;
+  b.heroHp = Math.max(0, b.heroHp - b.bossAtk);
+  b.bossHp = Math.max(0, b.bossHp - b.heroAtk);
+  scene.flash.setAlpha(0.16);
+  scene.board.logs.unshift(`슬라임이 ${b.bossAtk} 피해, 용사가 ${b.heroAtk} 피해를 주었다.`);
+  if (b.heroHp <= 0) {
+    b.result = "win";
+    scene.board.dungeon.soul += 60;
+    scene.board.dungeon.notoriety += 18;
+    scene.board.logs.unshift("용사 침입을 막아냈다. 악명 +18, Soul +60");
+  } else if (b.bossHp <= 0) {
+    b.result = "lose";
+    scene.board.dungeon.notoriety = Math.max(0, scene.board.dungeon.notoriety - 10);
+    scene.board.logs.unshift("방어 실패. 악명 -10");
+  }
+  renderBoard(scene);
+}
+
+function renderBoard(scene) {
+  if (scene.boardUi) scene.boardUi.destroy(true);
+  const c = scene.add.container(0, 0).setDepth(60);
+  scene.boardUi = c;
+  const b = scene.board;
+  addRect(scene, c, 0, 0, W, H, 0x050606, 1);
+  addText(scene, c, 18, 18, `악명 ${b.dungeon.notoriety}`, 15, "#d68cff");
+  addText(scene, c, 150, 18, `Soul ${b.dungeon.soul}`, 15, "#f0c45c");
+  addText(scene, c, 285, 18, `Gem ${b.dungeon.gem}`, 15, "#7fd8ff");
+  if (b.step === "choose") return renderChoose(scene, c);
+  if (b.step === "battle") return renderBattle(scene, c);
+  if (b.tab === "dungeon") renderDungeon(scene, c);
+  if (b.tab === "explore") renderExplore(scene, c);
+  if (b.tab === "boss") renderBosses(scene, c);
+  if (b.tab === "record") renderRecords(scene, c);
+  renderTabs(scene, c);
+}
+
+function renderChoose(scene, c) {
+  addText(scene, c, 28, 120, "최초의 필드보스를 선택하십시오", 24, "#f4f1e8");
+  [["오크 군주", 90], ["리치", 210], ["늪의 마녀", 330]].forEach(([name, x]) => {
+    addButton(scene, c, x, 250, 110, 140, name, () => {
+      scene.board.step = "main";
+      scene.board.logs.unshift(`${name} 선택 결과: 슬라임이 배정되었다.`);
+      renderBoard(scene);
+    });
+  });
+  addText(scene, c, 42, 450, "무엇을 고르든 현재 던전이 감당 가능한 존재는 슬라임뿐이다.", 15, "#aab0aa");
+}
+
+function renderDungeon(scene, c) {
+  const d = scene.board.dungeon;
+  addText(scene, c, 24, 80, d.name, 28, "#f4f1e8");
+  addText(scene, c, 24, 122, `${d.area}평   ${d.floor}   ${d.households}세대`, 17, "#c9c2b8");
+  [["습지", 76, 300], ["거주구", 220, 230], ["입구", 368, 300], ["훈련장", 220, 430]].forEach(([n,x,y]) => {
+    addRect(scene, c, x-48, y-38, 96, 76, 0x101513, 1, 0x2d3930);
+    addText(scene, c, x-28, y-8, n, 16, "#f4f1e8");
+  });
+  addSlime(scene, c, 78, 330, 1.1);
+  addButton(scene, c, 24, 555, 220, 74, "용사 침입 대응", () => startBoardBattle(scene));
+  addButton(scene, c, 270, 555, 220, 74, d.stage === 0 ? "42평 확장" : d.stage === 1 ? "84평 확장" : "확장 완료", () => expandDungeon(scene));
+  addPanel(scene, c, 24, 665, 492, 130, ["던전 현황", `입주 몬스터 ${d.monsters}/${d.capacity}`, `상주 필드보스 ${d.bosses}`, `자산 가치 ${d.asset} Soul`]);
+}
+
+function renderExplore(scene, c) {
+  addText(scene, c, 24, 76, "탐험 지역", 26, "#f4f1e8");
+  scene.board.areas.forEach((a, i) => {
+    const y = 135 + i * 132;
+    const locked = scene.board.dungeon.notoriety < a.req;
+    addRect(scene, c, 24, y, 492, 105, locked ? 0x0b0d0d : 0x101513, 1, locked ? 0x333333 : 0x314832);
+    addText(scene, c, 42, y + 18, `${a.name}  난이도 ${a.diff}`, 18, locked ? "#777" : "#f4f1e8");
+    addText(scene, c, 42, y + 52, locked ? `악명 ${a.req} 필요` : `발견 ${a.progress}/${a.max}`, 15, locked ? "#c55" : "#8bd17c");
+    if (!locked) addButton(scene, c, 388, y + 30, 92, 42, "진행", () => exploreArea(scene, i));
+  });
+}
+
+function renderBosses(scene, c) {
+  addText(scene, c, 24, 76, "필드보스 목록", 26, "#f4f1e8");
+  scene.board.bosses.forEach((boss, i) => {
+    const y = 130 + i * 128;
+    addRect(scene, c, 24, y, 492, 105, boss.recruited ? 0x102010 : 0x101313, 1, boss.recruited ? 0x3b8b3b : 0x333b3b);
+    if (boss.id === "slime") addSlime(scene, c, 70, y + 55, 0.9); else addText(scene, c, 56, y + 36, boss.discovered ? "?" : "??", 34, "#777");
+    addText(scene, c, 120, y + 20, boss.discovered ? boss.name : "???", 19, "#f4f1e8");
+    addText(scene, c, 120, y + 52, boss.recruited ? `Lv.${boss.lv}  ATK ${boss.atk}  HP ${boss.hp}` : boss.status, 15, "#c9c2b8");
+    addText(scene, c, 120, y + 76, boss.discovered ? boss.trait : "미발견", 14, "#8bd17c");
+  });
+}
+
+function renderBattle(scene, c) {
+  const b = scene.board.battle;
+  addText(scene, c, 24, 78, "용사 침입!", 28, "#ff5555");
+  addText(scene, c, 24, 120, "B1F · 거주구", 17, "#c9c2b8");
+  addSlime(scene, c, 120, 270, 1.7);
+  addText(scene, c, 350, 250, "용사 파티", 20, "#f4f1e8");
+  addText(scene, c, 370, 295, "⚔  ⚔  ✚", 26, "#d9d0c2");
+  drawHp(scene, c, 70, 390, 170, b.bossHp / b.bossMax, "슬라임", `${b.bossHp}/${b.bossMax}`);
+  drawHp(scene, c, 300, 390, 170, b.heroHp / b.heroMax, "용사 파티", `${b.heroHp}/${b.heroMax}`);
+  addText(scene, c, 24, 505, "지배자의 권능", 20, "#f4f1e8");
+  addButton(scene, c, 24, 545, 145, 60, "회복", () => usePower(scene, "heal"));
+  addButton(scene, c, 198, 545, 145, 60, "약화", () => usePower(scene, "weaken"));
+  addButton(scene, c, 372, 545, 145, 60, "보호막", () => usePower(scene, "shield"));
+  if (b.result) addButton(scene, c, 150, 645, 240, 62, b.result === "win" ? "결과 반영" : "귀환", () => { scene.board.step = "main"; scene.board.tab = "dungeon"; renderBoard(scene); });
+  addPanel(scene, c, 24, 730, 492, 150, scene.board.logs.slice(0, 5));
+}
+
+function renderRecords(scene, c) {
+  addText(scene, c, 24, 76, "기록", 26, "#f4f1e8");
+  addPanel(scene, c, 24, 130, 492, 620, scene.board.logs.slice(0, 12));
+}
+
+function renderTabs(scene, c) {
+  [["던전","dungeon",20],["탐험","explore",150],["보스","boss",280],["기록","record",410]].forEach(([label, tab, x]) => {
+    addButton(scene, c, x, H - 86, 110, 58, label, () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab);
+  });
+}
+
+function startBoardBattle(scene) {
+  scene.board.step = "battle";
+  scene.board.powerUsed = false;
+  scene.board.battle = { timer: 0, bossHp: 80, bossMax: 80, bossAtk: 18, heroHp: 60, heroMax: 60, heroAtk: 9, result: null };
+  scene.board.logs.unshift("용사 파티가 던전에 침입했다.");
+  renderBoard(scene);
+}
+
+function usePower(scene, type) {
+  const b = scene.board.battle;
+  if (!b || scene.board.powerUsed || b.result) return;
+  scene.board.powerUsed = true;
+  if (type === "heal") { b.bossHp = Math.min(b.bossMax, b.bossHp + 24); scene.board.logs.unshift("권능: 슬라임을 회복했다."); }
+  if (type === "weaken") { b.heroAtk = Math.max(2, b.heroAtk - 5); scene.board.logs.unshift("권능: 용사 파티를 약화했다."); }
+  if (type === "shield") { b.heroAtk = Math.max(1, Math.floor(b.heroAtk / 2)); scene.board.logs.unshift("권능: 보호막을 펼쳤다."); }
+  renderBoard(scene);
+}
+
+function exploreArea(scene, idx) {
+  const area = scene.board.areas[idx];
+  area.progress = Math.min(area.max, area.progress + 1);
+  scene.board.dungeon.soul += 35;
+  scene.board.logs.unshift(`${area.name} 탐험 진행. Soul +35`);
+  if (idx === 0 && area.progress >= area.max && !scene.board.bosses[1].recruited) {
+    scene.board.bosses[1].recruited = true;
+    scene.board.bosses[1].status = "상주";
+    scene.board.dungeon.bosses += 1;
+    scene.board.logs.unshift("새 필드보스 외눈박이 그룸을 영입했다.");
+  }
+  renderBoard(scene);
+}
+
+function expandDungeon(scene) {
+  const d = scene.board.dungeon;
+  if (d.stage === 0 && d.soul >= 180) { d.stage = 1; d.area = 42; d.households = 4; d.capacity = 32; d.asset = 2400; d.soul -= 180; scene.board.logs.unshift("던전을 42평으로 확장했다."); }
+  else if (d.stage === 1 && d.soul >= 360) { d.stage = 2; d.area = 84; d.floor = "B2F"; d.households = 8; d.capacity = 56; d.asset = 5200; d.soul -= 360; scene.board.logs.unshift("B2F를 열고 84평으로 확장했다."); }
+  else scene.board.logs.unshift("확장에 필요한 Soul이 부족하다.");
+  renderBoard(scene);
+}
+
+function addRect(scene, c, x, y, w, h, fill, alpha = 1, stroke = null) {
+  const r = scene.add.rectangle(x, y, w, h, fill, alpha).setOrigin(0).setDepth(60);
+  if (stroke !== null) r.setStrokeStyle(1, stroke, 1);
+  c.add(r); return r;
+}
+
+function addText(scene, c, x, y, value, size, color = "#f4f1e8") {
+  const t = scene.add.text(x, y, value, { fontFamily: "system-ui, sans-serif", fontSize: `${size}px`, fontStyle: "800", color, stroke: "#050606", strokeThickness: 3 }).setDepth(61);
+  c.add(t); return t;
+}
+
+function addButton(scene, c, x, y, w, h, label, fn, active = false) {
+  const r = addRect(scene, c, x, y, w, h, active ? 0x1d4a22 : 0x151817, 1, active ? 0x65c45c : 0x343b38).setInteractive({ useHandCursor: true });
+  const t = addText(scene, c, x + w / 2, y + h / 2 - 10, label, 16, active ? "#9cff8a" : "#f4f1e8").setOrigin(0.5);
+  r.on("pointerdown", fn); t.setInteractive({ useHandCursor: true }).on("pointerdown", fn);
+  return r;
+}
+
+function addPanel(scene, c, x, y, w, h, lines) {
+  addRect(scene, c, x, y, w, h, 0x0c0f0e, 1, 0x29312e);
+  lines.forEach((line, i) => addText(scene, c, x + 16, y + 16 + i * 28, line, i === 0 ? 17 : 14, i === 0 ? "#f4f1e8" : "#c9c2b8"));
+}
+
+function addSlime(scene, c, x, y, scale = 1) {
+  const body = scene.add.ellipse(x, y, 46 * scale, 34 * scale, 0x42c95a, 1).setDepth(61).setStrokeStyle(3, 0x173d1d);
+  const e1 = scene.add.circle(x - 10 * scale, y - 3 * scale, 3 * scale, 0x050606).setDepth(62);
+  const e2 = scene.add.circle(x + 10 * scale, y - 3 * scale, 3 * scale, 0x050606).setDepth(62);
+  c.add([body, e1, e2]);
+}
+
+function drawHp(scene, c, x, y, w, ratio, name, value) {
+  addText(scene, c, x, y - 28, name, 15, "#f4f1e8");
+  addRect(scene, c, x, y, w, 12, 0x1a1a18, 1);
+  addRect(scene, c, x, y, w * Math.max(0, ratio), 12, ratio > 0.35 ? 0x54c845 : 0xd8483a, 1);
+  addText(scene, c, x, y + 18, value, 14, "#c9c2b8");
 }
