@@ -31,6 +31,13 @@ function preload() {
   this.load.image("soundOffIcon", "assets/ui_webp/sound-off.webp");
   this.load.image("fullscreenEnterIcon", "assets/ui_webp/fullscreen-enter.webp");
   this.load.image("fullscreenExitIcon", "assets/ui_webp/fullscreen-exit.webp");
+  this.load.image("pdTiles", "2D Pixel Dungeon Asset Pack/character and tileset/Dungeon_Tileset.png");
+  this.load.image("pdCharacters", "2D Pixel Dungeon Asset Pack/character and tileset/Dungeon_Character.png");
+  this.load.image("pdSkeleton", "Enemy_Animations_Set/enemies-skeleton1_idle.png");
+  this.load.image("pdVampire", "Enemy_Animations_Set/enemies-vampire_idle.png");
+  this.load.image("pdChest", "2D Pixel Dungeon Asset Pack/items and trap_animation/chest/chest_1.png");
+  this.load.image("pdTorch", "2D Pixel Dungeon Asset Pack/items and trap_animation/torch/torch_1.png");
+  this.load.image("pdPeaks", "2D Pixel Dungeon Asset Pack/items and trap_animation/peaks/peaks_1.png");
 }
 
 function create() {
@@ -682,17 +689,21 @@ function startBoardMode(scene) {
     tab: "dungeon",
     selectedBoss: "slime",
     chosenName: "",
-    dungeon: { name: "축축한 동굴", area: 18, floor: "B1F", households: 2, monsters: 12, capacity: 20, bosses: 1, asset: 1250, notoriety: 42, soul: 320, gem: 125, stage: 0 },
+    dungeon: { name: "축축한 동굴", area: 18, floor: "B1F", households: 12, capacity: 20, bosses: 1, asset: 1250, notoriety: 42, soul: 320, gem: 125, stage: 0 },
     bosses: [
-      { id: "slime", name: "슬라임", lv: 3, hp: 80, maxHp: 80, atk: 18, def: 6, trait: "좁은 통로 통과 가능", status: "상주", recruited: true, discovered: true },
-      { id: "bat", name: "외눈박이 그룸", lv: 1, hp: 65, maxHp: 65, atk: 14, def: 3, trait: "어둠 지역 탐색", status: "발견", recruited: false, discovered: true },
-      { id: "orc", name: "오크 대장", lv: 2, hp: 120, maxHp: 120, atk: 24, def: 10, trait: "전투 보너스", status: "미발견", recruited: false, discovered: false },
-      { id: "witch", name: "늪의 마녀", lv: 2, hp: 70, maxHp: 70, atk: 28, def: 4, trait: "약화 권능 강화", status: "미발견", recruited: false, discovered: false },
+      { id: "slime", art: "slime", name: "슬라임", lv: 3, exp: 25, nextExp: 100, ap: 3, maxAp: 3, hp: 80, maxHp: 80, atk: 18, def: 6, spd: 8, grade: "C", interest: 3, need: 3, cost: 0, trait: "고요 이벤트 EXP 보너스", status: "대기", recruited: true, discovered: true },
+      { id: "grum", art: "vampire", name: "외눈박이 그룸", lv: 1, hp: 65, maxHp: 65, atk: 14, def: 3, spd: 14, grade: "B", interest: 1, need: 3, cost: 120, trait: "필드보스 관심도 획득 증가", status: "발견", recruited: false, discovered: true },
+      { id: "bone_collector", art: "skeleton1", name: "뼈 수금원 켈", lv: 2, hp: 90, maxHp: 90, atk: 20, def: 7, spd: 7, grade: "B", interest: 0, need: 3, cost: 160, trait: "용사 조우 Soul 보상 증가", status: "발견", recruited: false, discovered: true },
+      { id: "old_knight", art: "skeleton2", name: "낡은 갑주의 기사", lv: 2, hp: 120, maxHp: 120, atk: 22, def: 12, spd: 5, grade: "A", interest: 0, need: 3, cost: 180, trait: "순찰 HP 피해 감소", status: "발견", recruited: false, discovered: true },
+      { id: "mimic", art: "chest", name: "보물먹는 미믹", lv: 1, hp: 70, maxHp: 70, atk: 16, def: 8, spd: 6, grade: "B", interest: 0, need: 3, cost: 140, trait: "자원 발견 Soul 보상 증가", status: "발견", recruited: false, discovered: true },
+      { id: "torch_wraith", art: "torch", name: "횃불지기 망령", lv: 1, hp: 55, maxHp: 55, atk: 12, def: 4, spd: 16, grade: "A", interest: 0, need: 3, cost: 130, trait: "고요 이벤트를 발견 이벤트로 전환", status: "발견", recruited: false, discovered: true },
+      { id: "spike_hive", art: "peaks", name: "가시 함정 군체", lv: 2, hp: 100, maxHp: 100, atk: 26, def: 5, spd: 4, grade: "B", interest: 0, need: 3, cost: 170, trait: "용사 조우 악명 보상 증가", status: "발견", recruited: false, discovered: true },
+      { id: "key_imp", art: "imp", name: "열쇠지기 임프", lv: 1, hp: 60, maxHp: 60, atk: 15, def: 5, spd: 15, grade: "B", interest: 0, need: 3, cost: 150, trait: "잠긴 순찰 구역 요구 악명 감소", status: "발견", recruited: false, discovered: true },
     ],
     areas: [
-      { name: "버려진 폐광", diff: "★", req: 0, progress: 2, max: 4, done: false },
-      { name: "지하 수로", diff: "★★", req: 60, progress: 1, max: 4, done: false },
-      { name: "고대 묘지", diff: "★★", req: 200, progress: 0, max: 5, done: false },
+      { name: "B1F 축축한 통로", diff: "★", req: 0, progress: 0, max: 4, done: false },
+      { name: "B1F 무너진 거주구", diff: "★★", req: 60, progress: 0, max: 4, done: false },
+      { name: "B2F 어둠 수로", diff: "★★", req: 200, progress: 0, max: 5, done: false },
     ],
     logs: ["던전 지배권을 확보했다.", "축축한 동굴 18평에서 시작한다."],
     battle: null,
@@ -700,6 +711,7 @@ function startBoardMode(scene) {
     powerUsed: false,
     dwellers: Array.from({ length: 10 }, (_, i) => ({ x: 90 + (i % 5) * 80, y: 255 + Math.floor(i / 5) * 85, dx: (i % 2 ? 1 : -1) * 12, dy: (i % 3 ? 1 : -1) * 8 })),
     exploreRun: null,
+    apTimer: 0,
   };
   renderBoard(scene);
 }
@@ -711,6 +723,22 @@ function updateBoard(scene, dt) {
     m.x += m.dx * dt; m.y += m.dy * dt;
     if (m.x < 55 || m.x > 470) m.dx *= -1;
     if (m.y < 220 || m.y > 465) m.dy *= -1;
+  }
+  scene.board.apTimer += dt;
+  if (scene.board.apTimer >= 10) {
+    scene.board.apTimer = 0;
+    scene.board.bosses.filter((b) => b.recruited).forEach((b) => { b.ap = Math.min(b.maxAp || 3, (b.ap || 0) + 1); });
+    if (scene.board.tab === "boss" || scene.board.tab === "explore") renderBoard(scene);
+  }
+  if (scene.board.step === "exploreRun") {
+    const run = scene.board.exploreRun;
+    run.timer += dt;
+    if (!run.finished && run.timer >= 0.95) {
+      run.timer = 0;
+      advancePatrolLine(scene);
+      renderBoard(scene);
+    }
+    return;
   }
   if (scene.board.step !== "battle") return;
   const b = scene.board.battle;
@@ -750,7 +778,7 @@ function renderBoard(scene) {
   if (b.tab === "dungeon") renderDungeon(scene, c);
   if (b.tab === "explore") renderExplore(scene, c);
   if (b.tab === "boss") renderBosses(scene, c);
-  if (b.tab === "record") renderRecords(scene, c);
+  if (b.tab === "record") renderDex(scene, c);
   renderTabs(scene, c);
 }
 
@@ -764,14 +792,14 @@ function renderChoose(scene, c) {
       renderBoard(scene);
     }, "power");
   });
-  addText(scene, c, 42, 450, "무엇을 고르든 현재 던전이 감당 가능한 존재는 슬라임뿐이다.", 15, "#aab0aa");
+  addText(scene, c, 42, 450, "선택한 필드보스는 던전의 초기 운영 방향을 결정합니다.", 15, "#aab0aa");
 }
 
 function renderChosenSlime(scene, c) {
   addText(scene, c, 32, 92, `${scene.board.chosenName} 소환 의식`, 26, "#f4f1e8");
   addPanel(scene, c, 32, 148, 476, 110, ["심사 결과", "던전 규모: 18평", "마력 수용량: 매우 낮음", "권장 필드보스 등급: 하급"]);
   addText(scene, c, 56, 322, "실제 배정 필드보스", 18, "#aab0aa");
-  addSlime(scene, c, W / 2, 430, 2.4);
+  addBoardSlime(scene, c, W / 2, 430, 4.0);
   addText(scene, c, W / 2 - 42, 510, "슬라임", 34, "#8cff7a");
   addText(scene, c, 44, 575, "축하합니다. 현재 던전에는 이 정도가 딱 맞습니다.", 16, "#f0b24b");
   addButton(scene, c, 150, 660, 240, 72, "던전 입주", () => {
@@ -784,53 +812,62 @@ function renderChosenSlime(scene, c) {
 function renderDungeon(scene, c) {
   const d = scene.board.dungeon;
   addText(scene, c, 24, 80, d.name, 28, "#f4f1e8");
-  addText(scene, c, 24, 122, `${d.area}평   ${d.floor}   ${d.households}세대`, 17, "#c9c2b8");
-  [["습지", 76, 300], ["거주구", 220, 230], ["입구", 368, 300], ["훈련장", 220, 430]].forEach(([n,x,y]) => {
+  addText(scene, c, 24, 122, `${d.area}평   ${d.floor}   세대수 ${d.households}/${d.capacity}`, 17, "#c9c2b8");
+  [["습지", 76, 300], ["거주구", 220, 230], ["입구", 368, 300], ["훈련장", 220, 430]].forEach(([n,x,y], i) => {
     addRect(scene, c, x-48, y-38, 96, 76, 0x101513, 1, 0x2d3930);
-    addText(scene, c, x-28, y-8, n, 16, "#f4f1e8");
+    addBoardSprite(scene, c, "pdTiles", x, y - 6, 2.2, { x: 0, y: 0, w: 16, h: 16 }, 0.35);
+    if (i === 2) addBoardSprite(scene, c, "pdTorch", x + 24, y - 16, 1.8);
+    if (i === 3) addBoardSprite(scene, c, "pdChest", x + 20, y - 14, 1.6);
+    addText(scene, c, x-28, y+16, n, 16, "#f4f1e8");
   });
-  addSlime(scene, c, 78, 330, 1.1);
+  addBoardSlime(scene, c, 78, 330, 2.4);
   for (const m of scene.board.dwellers) {
     const dot = scene.add.circle(m.x, m.y, 4, 0x8bd17c, 0.9).setDepth(62);
     c.add(dot);
   }
-  if (!scene.board.invasion) addButton(scene, c, 24, 555, 220, 74, "침입 경고 발생", () => { scene.board.invasion = true; scene.board.logs.unshift("거주구 쪽에서 용사 침입 경고가 울렸다."); renderBoard(scene); }, "danger");
-  else addPanel(scene, c, 24, 535, 220, 104, ["용사 침입!", "B1F · 거주구", "발생 시간 09:27"]), addButton(scene, c, 78, 608, 112, 34, "대응하기", () => startBoardBattle(scene), "danger");
-  addButton(scene, c, 270, 555, 220, 74, d.stage === 0 ? "42평 확장" : d.stage === 1 ? "84평 확장" : "확장 완료", () => expandDungeon(scene), "growth");
-  addPanel(scene, c, 24, 665, 492, 130, ["던전 현황", `입주 몬스터 ${d.monsters}/${d.capacity}`, `상주 필드보스 ${d.bosses}`, `자산 가치 ${d.asset} Soul`]);
+  addPanel(scene, c, 24, 535, 220, 104, ["현재 던전 상황", `세대수 ${d.households}/${d.capacity}`, `상주 필드보스 ${d.bosses}`]);
+  addPanel(scene, c, 270, 535, 220, 104, ["다음 확장", "조건 준비 중", "현재 18평 유지"]);
+  addPanel(scene, c, 24, 665, 492, 130, ["운영 현황", `자산 가치 ${d.asset} Soul`, `Soul ${d.soul}`, `악명 ${d.notoriety}`]);
 }
 
 function renderExplore(scene, c) {
-  addText(scene, c, 24, 76, "탐험 지역", 26, "#f4f1e8");
+  addText(scene, c, 24, 76, "순찰 구역", 26, "#f4f1e8");
   scene.board.areas.forEach((a, i) => {
     const y = 135 + i * 132;
     const locked = scene.board.dungeon.notoriety < a.req;
     addRect(scene, c, 24, y, 492, 105, locked ? 0x0b0d0d : 0x101513, 1, locked ? 0x333333 : 0x314832);
+    addBoardSprite(scene, c, "pdTiles", 435, y + 52, 4.0, { x: (i % 3) * 16, y: 16, w: 16, h: 16 }, locked ? 0.18 : 0.42);
     addText(scene, c, 42, y + 18, `${a.name}  난이도 ${a.diff}`, 18, locked ? "#777" : "#f4f1e8");
-    addText(scene, c, 42, y + 52, locked ? `악명 ${a.req} 필요` : `발견 ${a.progress}/${a.max}`, 15, locked ? "#c55" : "#8bd17c");
-    if (!locked) addButton(scene, c, 388, y + 30, 92, 42, "탐험", () => startExploreRun(scene, i), "explore");
+    addText(scene, c, 42, y + 52, locked ? `악명 ${a.req} 필요` : `순찰 ${a.progress}/${a.max}`, 15, locked ? "#c55" : "#8bd17c");
+    if (!locked) { const boss = getPatrolBoss(scene); addButton(scene, c, 388, y + 30, 92, 42, boss.ap > 0 ? "순찰" : "AP 없음", () => startExploreRun(scene, i), boss.ap > 0 ? "explore" : "disabled"); }
   });
 }
 
 function renderBosses(scene, c) {
-  addText(scene, c, 24, 76, "필드보스 목록", 26, "#f4f1e8");
-  scene.board.bosses.forEach((boss, i) => {
+  addText(scene, c, 24, 76, "보유 필드보스", 26, "#f4f1e8");
+  const owned = scene.board.bosses.filter((boss) => boss.recruited);
+  owned.forEach((boss, i) => {
     const y = 130 + i * 128;
-    addRect(scene, c, 24, y, 492, 105, boss.recruited ? 0x102010 : 0x101313, 1, boss.recruited ? 0x3b8b3b : 0x333b3b);
-    if (boss.id === "slime") addSlime(scene, c, 70, y + 55, 0.9); else addText(scene, c, 56, y + 36, boss.discovered ? "?" : "??", 34, "#777");
-    addText(scene, c, 120, y + 20, boss.discovered ? boss.name : "???", 19, "#f4f1e8");
-    addText(scene, c, 120, y + 52, boss.recruited ? `Lv.${boss.lv}  ATK ${boss.atk}  HP ${boss.hp}` : boss.status, 15, "#c9c2b8");
-    addText(scene, c, 120, y + 76, boss.discovered ? boss.trait : "미발견", 14, "#8bd17c");
+    addRect(scene, c, 24, y, 492, 105, 0x102010, 1, 0x3b8b3b);
+    addBossArt(scene, c, boss, 70, y + 55, 2.0);
+    addText(scene, c, 120, y + 16, boss.name, 19, "#f4f1e8");
+    addText(scene, c, 120, y + 44, `Lv.${boss.lv}  EXP ${boss.exp || 0}/${boss.nextExp || 100}  AP ${boss.ap || 0}/${boss.maxAp || 3}`, 14, "#c9c2b8");
+    addText(scene, c, 120, y + 68, `HP ${boss.hp}/${boss.maxHp}  공격 ${boss.atk}  방어 ${boss.def}  민첩 ${boss.spd}`, 13, "#8bd17c");
+    addText(scene, c, 386, y + 16, `${boss.grade}급`, 15, "#f0c45c");
+    addText(scene, c, 386, y + 42, boss.status, 13, "#aab0aa");
   });
+  if (!owned.length) addPanel(scene, c, 24, 150, 492, 110, ["보유 필드보스 없음"]);
 }
 
 function renderBattle(scene, c) {
   const b = scene.board.battle;
   addText(scene, c, 24, 78, "용사 침입!", 28, "#ff5555");
   addText(scene, c, 24, 120, "B1F · 거주구", 17, "#c9c2b8");
-  addSlime(scene, c, 120, 270, 1.7);
+  addBoardSlime(scene, c, 120, 270, 3.0);
   addText(scene, c, 350, 250, "용사 파티", 20, "#f4f1e8");
-  addText(scene, c, 370, 295, "⚔  ⚔  ✚", 26, "#d9d0c2");
+  addBoardSprite(scene, c, "pdSkeleton", 345, 315, 2.2, { x: 0, y: 0, w: 32, h: 32 });
+  addBoardSprite(scene, c, "pdSkeleton", 395, 315, 2.2, { x: 32, y: 0, w: 32, h: 32 });
+  addBoardSprite(scene, c, "pdSkeleton", 445, 315, 2.2, { x: 64, y: 0, w: 32, h: 32 });
   drawHp(scene, c, 70, 390, 170, b.bossHp / b.bossMax, "슬라임", `${b.bossHp}/${b.bossMax}`);
   drawHp(scene, c, 300, 390, 170, b.heroHp / b.heroMax, "용사 파티", `${b.heroHp}/${b.heroMax}`);
   addText(scene, c, 24, 505, "지배자의 권능", 20, "#f4f1e8");
@@ -838,26 +875,106 @@ function renderBattle(scene, c) {
   addButton(scene, c, 24, 545, 145, 60, "회복", () => usePower(scene, "heal"), powerKind);
   addButton(scene, c, 198, 545, 145, 60, "약화", () => usePower(scene, "weaken"), powerKind);
   addButton(scene, c, 372, 545, 145, 60, "보호막", () => usePower(scene, "shield"), powerKind);
-  if (b.result) addButton(scene, c, 150, 645, 240, 62, b.result === "win" ? "결과 반영" : "귀환", () => { scene.board.step = "main"; scene.board.tab = "dungeon"; renderBoard(scene); }, "primary");
+  if (b.result) addButton(scene, c, 150, 645, 240, 62, "복귀", () => { scene.board.step = "main"; scene.board.tab = "dungeon"; renderBoard(scene); }, "primary");
   addPanel(scene, c, 24, 730, 492, 150, scene.board.logs.slice(0, 5));
 }
 
-function renderRecords(scene, c) {
-  addText(scene, c, 24, 76, "기록", 26, "#f4f1e8");
-  addPanel(scene, c, 24, 130, 492, 620, scene.board.logs.slice(0, 12));
+function renderDex(scene, c) {
+  addText(scene, c, 24, 76, "필드보스 도감", 26, "#f4f1e8");
+  scene.board.bosses.forEach((boss, i) => {
+    const y = 120 + i * 78;
+    addRect(scene, c, 24, y, 492, 66, boss.discovered ? 0x101513 : 0x0b0d0d, 1, boss.discovered ? 0x314832 : 0x333333);
+    addRect(scene, c, 38, y + 12, 44, 42, 0x070909, 1, 0x26362b);
+    if (boss.discovered) addBossIcon(scene, c, boss, 60, y + 34); else addText(scene, c, 42, y + 22, "???", 18, "#777");
+    addText(scene, c, 96, y + 10, boss.discovered ? boss.name : "???", 16, boss.discovered ? "#f4f1e8" : "#777");
+    addText(scene, c, 96, y + 33, boss.recruited ? "영입 완료" : boss.discovered ? `관심도 ${boss.interest}/${boss.need}  Soul ${boss.cost}` : "미발견", 13, "#c9c2b8");
+    addText(scene, c, 278, y + 12, boss.discovered ? `등급 ${boss.grade}  HP ${boss.maxHp}` : "", 12, "#aab0aa");
+    addText(scene, c, 278, y + 34, boss.discovered ? `공격 ${boss.atk}  방어 ${boss.def}  민첩 ${boss.spd}` : "순찰 중 마주치면 기록", 12, boss.discovered ? "#8bd17c" : "#777");
+  });
 }
 
 function renderTabs(scene, c) {
-  [["던전","dungeon",20],["탐험","explore",150],["보스","boss",280],["기록","record",410]].forEach(([label, tab, x]) => {
+  [["던전","dungeon",20],["순찰","explore",150],["보스","boss",280],["도감","record",410]].forEach(([label, tab, x]) => {
     addButton(scene, c, x, H - 86, 110, 58, label, () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab ? "tabActive" : "tab");
   });
 }
 
+function getPatrolBoss(scene) {
+  return scene.board.bosses.find((b) => b.recruited);
+}
+
+function addBossExp(scene, boss, amount) {
+  boss.exp = (boss.exp || 0) + amount;
+  boss.nextExp = boss.nextExp || 100;
+  while (boss.exp >= boss.nextExp) {
+    boss.exp -= boss.nextExp;
+    boss.lv += 1;
+    boss.maxHp += 10;
+    boss.hp = boss.maxHp;
+    boss.atk += 2;
+    boss.def += 1;
+    boss.spd += 1;
+    scene.board.exploreRun.rewards.levelUps += 1;
+    scene.board.exploreRun.shown.push(`${boss.name} 레벨 상승! Lv.${boss.lv}`);
+  }
+}
+
+function buildPatrolEvents(idx) {
+  const sets = [
+    [
+      { title: "고요", kind: "none", lines: ["아무것도 없다.", "물방울 소리만 축축한 통로를 채운다.", "슬라임은 천천히 앞으로 굴러간다."] },
+      { title: "몬스터", kind: "monster", lines: ["떠돌이 몬스터를 만났다.", "작은 고블린 무리가 슬라임 뒤를 따라왔다.", "세대수 +1"] },
+      { title: "자원", kind: "soul", lines: ["자원을 발견했다.", "벽 틈에서 낡은 Soul 결정이 빛난다.", "Soul +35"] },
+      { title: "흔적", kind: "boss", lines: ["새로운 필드보스를 마주쳤다.", "외눈박이 그룸이 어둠 속에서 이쪽을 본다.", "관심도 +1"] },
+    ],
+    [
+      { title: "고요", kind: "none", lines: ["아무것도 없다.", "무너진 거주구에는 먼지만 떠다닌다.", "슬라임은 흔적을 더듬는다."] },
+      { title: "용사", kind: "hero", damage: 22, lines: ["적군인 용사를 만났다.", "짧은 충돌 끝에 용사를 쫓아냈다.", "슬라임 HP -22 / 악명 +10 / Soul +20"] },
+      { title: "몬스터", kind: "monster", lines: ["떠돌이 몬스터를 만났다.", "낡은 항아리 뒤에서 박쥐 무리가 튀어나왔다.", "세대수 +1"] },
+    ],
+    [
+      { title: "고요", kind: "none", lines: ["아무것도 없다.", "검은 물길 아래에서 낮은 울림이 들린다.", "슬라임은 아직 돌아가지 않는다."] },
+      { title: "자원", kind: "soul", lines: ["자원을 수집했다.", "수로 바닥에 Soul 잔해가 가라앉아 있다.", "Soul +35"] },
+      { title: "용사", kind: "hero", damage: 34, lines: ["적군인 용사를 만났다.", "정찰병을 몰아냈지만 슬라임의 체력이 크게 줄었다.", "슬라임 HP -34 / 악명 +10 / Soul +20"] },
+    ],
+  ];
+  return sets[idx] || sets[0];
+}
+
+function rollPatrolEvents(idx) {
+  const pool = buildPatrolEvents(idx);
+  const normal = pool.filter((e) => e.kind !== "boss");
+  const boss = pool.find((e) => e.kind === "boss");
+  const count = Phaser.Math.Between(2, 4);
+  const picked = [];
+  for (let i = 0; i < count; i += 1) picked.push(Phaser.Utils.Array.GetRandom(normal));
+  if (boss && Math.random() < 0.12) picked[Phaser.Math.Between(0, picked.length - 1)] = boss;
+  return picked;
+}
+
+function applyPatrolEvent(scene, event) {
+  const d = scene.board.dungeon;
+  const run = scene.board.exploreRun;
+  const boss = run.boss;
+  const expGain = { none: 5, monster: 10, soul: 10, hero: 20, boss: 15 }[event.kind] || 8;
+  addBossExp(scene, boss, expGain);
+  run.rewards.exp += expGain;
+  if (event.kind === "monster") { d.households = Math.min(d.capacity, d.households + 1); run.rewards.monsters += 1; }
+  if (event.kind === "soul") { d.soul += 35; run.rewards.soul += 35; }
+  if (event.kind === "hero") { d.soul += 20; d.notoriety += 10; run.rewards.soul += 20; run.rewards.notoriety += 10; run.hp = Math.max(0, run.hp - (event.damage || 20)); }
+  if (event.kind === "boss") { scene.board.areas[0].progress = Math.min(scene.board.areas[0].max, scene.board.areas[0].progress + 1); run.rewards.clues += 1; }
+  scene.board.logs.unshift(event.lines[0]);
+}
+
 function startExploreRun(scene, idx) {
   const area = scene.board.areas[idx];
+  const boss = getPatrolBoss(scene);
+  if (!boss || boss.ap <= 0) { scene.board.logs.unshift("순찰 가능한 행동력이 부족하다."); return renderBoard(scene); }
+  boss.ap -= 1;
+  boss.status = "순찰";
   scene.board.step = "exploreRun";
-  scene.board.exploreRun = { idx, node: 0, nodes: ["입구 정찰", "자원 발견", idx === 0 ? "낯선 흔적" : "귀환로 확보"] };
-  scene.board.logs.unshift(`${area.name} 탐험을 시작했다.`);
+  scene.board.exploreRun = { idx, boss, event: 0, line: 0, timer: 0, hp: boss.hp, maxHp: boss.maxHp, nodes: rollPatrolEvents(idx), shown: [`${boss.name}이 ${area.name} 순찰을 시작했다.`], rewards: { soul: 0, notoriety: 0, monsters: 0, clues: 0, exp: 0, levelUps: 0 }, finished: false };
+  scene.board.logs.unshift(`${boss.name}이 ${area.name} 순찰을 시작했다.`);
   renderBoard(scene);
 }
 
@@ -865,20 +982,51 @@ function renderExploreRun(scene, c) {
   const run = scene.board.exploreRun;
   const area = scene.board.areas[run.idx];
   addText(scene, c, 24, 76, area.name, 26, "#f4f1e8");
-  addText(scene, c, 24, 116, "슬라임이 외부 지역을 탐험 중", 16, "#c9c2b8");
-  run.nodes.forEach((n, i) => {
-    const x = 78 + i * 155;
-    addRect(scene, c, x - 42, 235, 84, 84, i < run.node ? 0x17361d : i === run.node ? 0x143048 : 0x101313, 1, i <= run.node ? 0x54aee8 : 0x333b3b);
-    addText(scene, c, x - 32, 335, n, 14, i <= run.node ? "#f4f1e8" : "#777");
-  });
-  addPanel(scene, c, 32, 430, 476, 150, run.node === 0 ? ["사건", "폐광 입구가 무너져 있다.", "슬라임은 좁은 틈으로 통과할 수 있다."] : run.node === 1 ? ["발견", "낡은 Soul 광맥을 찾았다.", "탐험 보상: Soul +35"] : ["흔적", "벽면에 외눈박이 표식이 있다.", "새 필드보스의 존재가 확인됐다."]);
-  addButton(scene, c, 150, 640, 240, 66, run.node >= run.nodes.length - 1 ? "귀환" : "다음 노드", () => progressExploreRun(scene), "explore");
+  addText(scene, c, 24, 116, `${run.boss.name}이 던전 안을 순찰 중`, 16, "#c9c2b8");
+  drawHp(scene, c, 32, 155, 220, run.hp / run.maxHp, "순찰 HP", `${run.hp}/${run.maxHp}`);
+  addLogPanel(scene, c, 32, 230, 476, run.finished ? 290 : 390, run.shown.slice(-10));
+  if (run.finished) {
+    addLogPanel(scene, c, 32, 545, 476, 115, patrolSummary(run));
+    addButton(scene, c, 150, 690, 240, 66, "귀환", () => finishPatrol(scene), "explore");
+  } else addText(scene, c, 190, 660, "순찰 진행 중...", 17, "#aab0aa");
 }
 
-function progressExploreRun(scene) {
+function advancePatrolLine(scene) {
   const run = scene.board.exploreRun;
-  if (run.node < run.nodes.length - 1) { run.node += 1; scene.board.dungeon.soul += 35; scene.board.logs.unshift(`탐험 노드 진행: ${run.nodes[run.node]}`); return renderBoard(scene); }
-  exploreArea(scene, run.idx);
+  const event = run.nodes[run.event];
+  if (run.line === 0) applyPatrolEvent(scene, event);
+  run.shown.push(event.lines[run.line]);
+  run.line += 1;
+  if (run.hp <= 25) {
+    run.shown.push("슬라임의 체력이 낮아 순찰을 빨리 마쳤다.");
+    run.finished = true;
+    run.timer = 0;
+    return;
+  }
+  if (run.line >= event.lines.length) {
+    run.event += 1;
+    run.line = 0;
+    if (run.event >= run.nodes.length) {
+      exploreArea(scene, run.idx, false);
+      run.finished = true;
+      run.timer = 0;
+    }
+  }
+}
+
+function patrolSummary(run) {
+  const r = run.rewards;
+  return [
+    "이번 순찰 결과",
+    `Soul +${r.soul}   악명 +${r.notoriety}`,
+    `세대수 +${r.monsters}   관심도 +${r.clues}`,
+    `EXP +${r.exp}   레벨업 +${r.levelUps}`,
+  ];
+}
+
+function finishPatrol(scene) {
+  const run = scene.board.exploreRun;
+  if (run?.boss) { run.boss.hp = run.hp; run.boss.status = "대기"; }
   scene.board.step = "main";
   scene.board.tab = "explore";
   scene.board.exploreRun = null;
@@ -904,18 +1052,18 @@ function usePower(scene, type) {
   renderBoard(scene);
 }
 
-function exploreArea(scene, idx) {
+function exploreArea(scene, idx, redraw = true) {
   const area = scene.board.areas[idx];
   area.progress = Math.min(area.max, area.progress + 1);
   scene.board.dungeon.soul += 35;
-  scene.board.logs.unshift(`${area.name} 탐험 진행. Soul +35`);
+  scene.board.logs.unshift(`${area.name} 순찰 완료. Soul +35`);
   if (idx === 0 && area.progress >= area.max && !scene.board.bosses[1].recruited) {
     scene.board.bosses[1].recruited = true;
     scene.board.bosses[1].status = "상주";
     scene.board.dungeon.bosses += 1;
     scene.board.logs.unshift("새 필드보스 외눈박이 그룸을 영입했다.");
   }
-  renderBoard(scene);
+  if (redraw) renderBoard(scene);
 }
 
 function expandDungeon(scene) {
@@ -924,6 +1072,36 @@ function expandDungeon(scene) {
   else if (d.stage === 1 && d.soul >= 360) { d.stage = 2; d.area = 84; d.floor = "B2F"; d.households = 8; d.capacity = 56; d.asset = 5200; d.soul -= 360; scene.board.logs.unshift("B2F를 열고 84평으로 확장했다."); }
   else scene.board.logs.unshift("확장에 필요한 Soul이 부족하다.");
   renderBoard(scene);
+}
+
+function addBossIcon(scene, c, boss, x, y) {
+  const scale = { slime: 1.5, vampire: 1.15, skeleton1: 1.15, skeleton2: 1.15, chest: 1.05, torch: 0.9, peaks: 0.9, imp: 1.6 }[boss.art] || 1.3;
+  const img = addBossArt(scene, c, boss, x, y, scale);
+  img?.setDisplaySize(Math.min(img.displayWidth, 34), Math.min(img.displayHeight, 34));
+  return img;
+}
+
+function addBossArt(scene, c, boss, x, y, scale = 2) {
+  if (boss.art === "slime") return addBoardSlime(scene, c, x, y, scale);
+  if (boss.art === "vampire") return addBoardSprite(scene, c, "pdVampire", x, y, scale, { x: 0, y: 0, w: 32, h: 32 });
+  if (boss.art === "skeleton1") return addBoardSprite(scene, c, "pdSkeleton", x, y, scale, { x: 0, y: 0, w: 32, h: 32 });
+  if (boss.art === "skeleton2") return addBoardSprite(scene, c, "pdSkeleton", x, y, scale, { x: 32, y: 0, w: 32, h: 32 });
+  if (boss.art === "chest") return addBoardSprite(scene, c, "pdChest", x, y, scale * 0.8);
+  if (boss.art === "torch") return addBoardSprite(scene, c, "pdTorch", x, y, scale * 0.9);
+  if (boss.art === "peaks") return addBoardSprite(scene, c, "pdPeaks", x, y, scale * 0.9);
+  return addBoardSprite(scene, c, "pdCharacters", x, y, scale, { x: 16, y: 0, w: 16, h: 16 });
+}
+
+function addBoardSprite(scene, c, key, x, y, scale = 1, crop = null, alpha = 1) {
+  const img = scene.add.image(x, y, key).setDepth(62).setScale(scale).setAlpha(alpha);
+  if (crop) img.setCrop(crop.x, crop.y, crop.w, crop.h);
+  c.add(img);
+  return img;
+}
+
+function addBoardSlime(scene, c, x, y, scale = 2) {
+  // ponytail: crop uses the first 16x16 character cell; replace with exact exported slime sprite when available.
+  return addBoardSprite(scene, c, "pdCharacters", x, y, scale, { x: 0, y: 0, w: 16, h: 16 });
 }
 
 function addRect(scene, c, x, y, w, h, fill, alpha = 1, stroke = null) {
@@ -954,6 +1132,24 @@ function addButton(scene, c, x, y, w, h, label, fn, kind = "default") {
   const t = addText(scene, c, x + w / 2, y + h / 2 - 10, label, 16, color).setOrigin(0.5);
   if (kind !== "disabled") { r.on("pointerdown", fn); t.setInteractive({ useHandCursor: true }).on("pointerdown", fn); }
   return r;
+}
+
+function logColor(line, i) {
+  if (i === 0 && line === "이번 순찰 결과") return "#f4f1e8";
+  if (line.includes("Soul")) return "#f0c45c";
+  if (line.includes("악명")) return "#d68cff";
+  if (line.includes("세대수")) return "#8cff7a";
+  if (line.includes("관심도") || line.includes("필드보스")) return "#7fd8ff";
+  if (line.includes("HP") || line.includes("체력") || line.includes("용사")) return "#ff8a7a";
+  if (line.includes("아무것도 없다")) return "#8c9490";
+  if (line.includes("떠돌이 몬스터")) return "#9cff8a";
+  if (line.includes("자원")) return "#f0c45c";
+  return "#c9c2b8";
+}
+
+function addLogPanel(scene, c, x, y, w, h, lines) {
+  addRect(scene, c, x, y, w, h, 0x0c0f0e, 1, 0x29312e);
+  lines.forEach((line, i) => addText(scene, c, x + 16, y + 16 + i * 26, line, i === 0 && line === "이번 순찰 결과" ? 17 : 14, logColor(line, i)));
 }
 
 function addPanel(scene, c, x, y, w, h, lines) {
