@@ -126,9 +126,11 @@ function create() {
   this.fullscreenToggle.on("pointerdown", () => toggleFullscreen(this));
   this.startPanel = this.add.rectangle(W / 2, H / 2, W, H, 0x050606, 0.72).setDepth(40);
   this.startText = text(this, W / 2, H / 2 - 74, "", 44).setOrigin(0.5).setDepth(41);
-  this.startModeA = text(this, W / 2 - 132, H / 2 - 68, "SCROLL", 15).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
-  this.startModeB = text(this, W / 2, H / 2 - 68, "PSEUDO-3D", 15).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
-  this.startModeC = text(this, W / 2 + 132, H / 2 - 68, "BOARD", 15).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeA = text(this, W / 2 - 200, H / 2 - 68, "SCROLL", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeB = text(this, W / 2 - 100, H / 2 - 68, "PSEUDO-3D", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeC = text(this, W / 2, H / 2 - 68, "BOARD", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeD = text(this, W / 2 + 100, H / 2 - 68, "KING-3D", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startModeE = text(this, W / 2 + 202, H / 2 - 68, "ABYSS", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
   this.startSound = this.add.image(W / 2 - 46, H / 2, "soundOffIcon").setDisplaySize(58, 58).setDepth(41).setInteractive({ useHandCursor: true });
   this.startFullscreen = this.add.image(W / 2 + 46, H / 2, "fullscreenEnterIcon").setDisplaySize(58, 58).setDepth(41).setInteractive({ useHandCursor: true });
   this.startHit = this.add.rectangle(W / 2, H / 2 + 72, 190, 62, 0x2a211b, 0.92).setDepth(41).setInteractive({ useHandCursor: true });
@@ -137,6 +139,8 @@ function create() {
   this.startModeA.on("pointerdown", () => setMode(this, "scroll"));
   this.startModeB.on("pointerdown", () => setMode(this, "raycast"));
   this.startModeC.on("pointerdown", () => setMode(this, "board"));
+  this.startModeD.on("pointerdown", () => setMode(this, "kingcast"));
+  this.startModeE.on("pointerdown", () => setMode(this, "abyss"));
   this.startSound.on("pointerdown", () => toggleSound(this));
   this.startFullscreen.on("pointerdown", () => toggleFullscreen(this));
   drawUiIcons(this);
@@ -159,6 +163,7 @@ function update(_, deltaMs) {
   const s = this.state;
   s.timer += dt;
   if (s.mode === "board" && s.phase === "board") return updateBoard(this, dt);
+  if (s.mode === "kingcast" && s.phase === "walk") return updateKingMode(this, dt);
   drawCorridor(this);
   this.flash.setAlpha(Math.max(0, this.flash.alpha - dt * 4));
 
@@ -166,7 +171,7 @@ function update(_, deltaMs) {
     startWalkSound(this);
     s.road += dt * 0.5;
     s.walkScroll += dt * 0.5;
-    if (s.mode === "raycast") advanceRay(this, dt * 0.65);
+    if (s.mode === "raycast" || s.mode === "kingcast") advanceRay(this, dt * 0.65);
     this.enemy.setVisible(false);
     this.enemyHpBg.setVisible(false);
     this.enemyHpLagBar.setVisible(false);
@@ -478,6 +483,149 @@ function returnToStart(scene) {
   scene.scene.restart();
 }
 
+const KING_DIRS = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
+
+function initKingMode(scene) {
+  const dungeon = generateKingDungeon();
+  scene.kingRun = {
+    dungeon,
+    progress: 0,
+    target: dungeon.path.length - 2,
+    camAngle: -Math.PI / 2,
+    bobT: 0,
+    camX: dungeon.path[0].x + 0.5,
+    camY: dungeon.path[0].y + 0.5,
+  };
+}
+
+function generateKingDungeon() {
+  const size = 64;
+  const grid = new Uint8Array(size * size).fill(1);
+  const carve = (x, y) => { if (x > 1 && y > 1 && x < size - 2 && y < size - 2) grid[y * size + x] = 0; };
+  const path = [];
+  let x = Math.floor(size / 2), y = size - 4, dir = 0;
+  carve(x, y); path.push({ x, y });
+  for (let n = 0; n < 52; n++) {
+    if (n > 8 && n % 13 === 0) dir = Math.random() < 0.5 ? 3 : 1;
+    if (n > 8 && n % 13 === 4) dir = 0;
+    const d = KING_DIRS[dir];
+    x += d.x; y += d.y;
+    carve(x, y); path.push({ x, y });
+    if (n % 9 === 0) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) carve(x + dx, y + dy);
+  }
+  return { grid, size, path };
+}
+
+function kingIsWall(dungeon, x, y) {
+  x = Math.floor(x); y = Math.floor(y);
+  if (x < 0 || y < 0 || x >= dungeon.size || y >= dungeon.size) return true;
+  return dungeon.grid[y * dungeon.size + x] === 1;
+}
+
+function updateKingMode(scene, dt) {
+  startWalkSound(scene);
+  const run = scene.kingRun || (initKingMode(scene), scene.kingRun);
+  run.progress = Math.min(run.target, run.progress + 2.35 * dt);
+  run.bobT += dt * 9;
+  const i = Math.max(0, Math.floor(run.progress));
+  const f = run.progress - i;
+  const a = run.dungeon.path[Math.min(i, run.dungeon.path.length - 1)];
+  const b = run.dungeon.path[Math.min(i + 1, run.dungeon.path.length - 1)];
+  run.camX = a.x + 0.5 + (b.x - a.x) * f;
+  run.camY = a.y + 0.5 + (b.y - a.y) * f;
+  const target = Math.atan2(b.y - a.y, b.x - a.x);
+  let diff = target - run.camAngle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  run.camAngle += diff * Math.min(1, dt * 5);
+  renderKingScene(scene, run);
+  scene.hp.setText("KING-3D 독립 렌더 테스트");
+  scene.floorText.setText(`${Math.min(i + 1, run.dungeon.path.length)}/${run.dungeon.path.length}`);
+  scene.log.setText("pseudo-king 코드 구조 기반 자동 전진 중");
+}
+
+function kingFloorCeiling(ctx, w, h, cam, horizon, flick) {
+  const img = ctx.createImageData(w, h), data = img.data;
+  const lx = cam.dirX - cam.planeX, ly = cam.dirY - cam.planeY;
+  const rx = cam.dirX + cam.planeX, ry = cam.dirY + cam.planeY;
+  for (let y = 0; y < h; y++) {
+    const isFloor = y > horizon;
+    const p = Math.max(1, isFloor ? y - horizon : horizon - y);
+    const rowDist = (0.5 * h) / p;
+    const stepX = rowDist * (rx - lx) / w, stepY = rowDist * (ry - ly) / w;
+    let fx = cam.x + rowDist * lx, fy = cam.y + rowDist * ly;
+    const light = Math.min(1, 2.4 / (1 + rowDist * rowDist * 0.38)) * flick;
+    for (let x = 0; x < w; x++) {
+      const cx = Math.floor(fx), cy = Math.floor(fy), tx = fx - cx, ty = fy - cy;
+      const j = rayHash(cx, cy, isFloor ? 3 : 7);
+      let r, g, b;
+      if (isFloor) {
+        const tone = 0.72 + j * 0.5;
+        r = 98 * tone; g = 84 * tone; b = 68 * tone;
+        if (((cx + cy) & 1) === 0) { r *= 0.86; g *= 0.86; b *= 0.86; }
+        if (tx < 0.07 || ty < 0.07) { r *= 0.42; g *= 0.42; b *= 0.42; }
+      } else {
+        const tone = 0.55 + j * 0.9;
+        r = 36 * tone; g = 31 * tone; b = 40 * tone;
+        if (j > 0.93) { r *= 1.6; g *= 1.5; b *= 1.3; }
+      }
+      const li = isFloor ? light : Math.min(1, light * 0.55 + 0.04);
+      const idx = (y * w + x) * 4;
+      data[idx] = r * li; data[idx + 1] = g * li; data[idx + 2] = b * li; data[idx + 3] = 255;
+      fx += stepX; fy += stepY;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function renderKingScene(scene, run) {
+  const tex = scene.floorCanvas, ctx = tex.context, w = W, h = H;
+  ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = false;
+  const dirX = Math.cos(run.camAngle), dirY = Math.sin(run.camAngle), fov = 0.85;
+  const cam = { x: run.camX, y: run.camY, dirX, dirY, planeX: -dirY * fov, planeY: dirX * fov };
+  const horizon = Math.round(h / 2 + Math.sin(run.bobT) * h * 0.012);
+  const flick = 1 + 0.07 * Math.sin(scene.state.timer * 9.3) + 0.05 * Math.sin(scene.state.timer * 23.7 + 1.3);
+  kingFloorCeiling(ctx, w, h, cam, horizon, flick);
+  for (let x = 0; x < w; x++) {
+    const cameraX = 2 * x / w - 1;
+    const rayDirX = cam.dirX + cam.planeX * cameraX, rayDirY = cam.dirY + cam.planeY * cameraX;
+    let mapX = Math.floor(cam.x), mapY = Math.floor(cam.y);
+    const deltaX = Math.abs(1 / (rayDirX || 1e-6)), deltaY = Math.abs(1 / (rayDirY || 1e-6));
+    let stepX, stepY, sideDistX, sideDistY;
+    if (rayDirX < 0) { stepX = -1; sideDistX = (cam.x - mapX) * deltaX; } else { stepX = 1; sideDistX = (mapX + 1 - cam.x) * deltaX; }
+    if (rayDirY < 0) { stepY = -1; sideDistY = (cam.y - mapY) * deltaY; } else { stepY = 1; sideDistY = (mapY + 1 - cam.y) * deltaY; }
+    let side = 0, guard = 0;
+    while (!kingIsWall(run.dungeon, mapX, mapY) && guard++ < 128) {
+      if (sideDistX < sideDistY) { sideDistX += deltaX; mapX += stepX; side = 0; }
+      else { sideDistY += deltaY; mapY += stepY; side = 1; }
+    }
+    const perp = side === 0 ? (mapX - cam.x + (1 - stepX) / 2) / (rayDirX || 1e-6) : (mapY - cam.y + (1 - stepY) / 2) / (rayDirY || 1e-6);
+    const dist = Math.max(0.05, perp), lineH = h / dist;
+    const y0 = Math.max(0, -lineH / 2 + horizon), y1 = Math.min(h, lineH / 2 + horizon);
+    let wallX = side === 0 ? cam.y + perp * rayDirY : cam.x + perp * rayDirX; wallX -= Math.floor(wallX);
+    const light = (1.5 / (1 + dist * 0.55)) * flick, fog = 1 / (1 + dist * dist * 0.05);
+    const base = side === 1 ? [104, 84, 66] : [148, 122, 94];
+    const cellJitter = 0.88 + rayHash(mapX, mapY, 11) * 0.24;
+    const mossy = rayHash(mapX, mapY, 53) > 0.6;
+    const segH = (y1 - y0) / 4;
+    for (let row = 0; row < 4; row++) {
+      const yy0 = y0 + segH * row, yy1 = row === 3 ? y1 : y0 + segH * (row + 1);
+      const bu = wallX * 2 + (row % 2 === 0 ? 0 : 0.5), brickIdx = Math.floor(bu), bf = bu - brickIdx;
+      let tint = base, k = light * fog * cellJitter * (0.8 + rayHash(mapX * 3 + brickIdx, mapY * 5 + row, 29) * 0.4);
+      if (row === 3 && mossy) { tint = [base[0] * 0.62, base[1] * 0.82, base[2] * 0.55]; k *= 0.85; }
+      if (bf < 0.09) k *= 0.42;
+      ctx.fillStyle = rayShade(tint, k); ctx.fillRect(x, yy0, 1, yy1 - yy0);
+      if (row > 0) { ctx.fillStyle = rayShade(base, light * fog * 0.3); ctx.fillRect(x, yy0 - 0.5, 1, 1); }
+    }
+  }
+  const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.15, w / 2, h / 2, h * 0.75);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, `rgba(0,0,0,${(0.74 - (flick - 1) * 0.6).toFixed(3)})`);
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+  tex.refresh(); scene.corridor.clear();
+  for (const prop of scene.props) prop.sprite.setVisible(false);
+  scene.enemy.setVisible(false); scene.enemyHpBg.setVisible(false); scene.enemyHpLagBar.setVisible(false); scene.enemyHpBar.setVisible(false);
+}
+
 function startWalkSound(scene) {
   if (!scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
   if (!scene.sfx.walk.isPlaying) safePlay(scene.sfx.walk);
@@ -487,12 +635,16 @@ function startGame(scene) {
   scene.startButton.setText("START");
   scene.startHit.setAlpha(0.92);
   if (scene.state.mode === "board") return startBoardMode(scene);
+  if (scene.state.mode === "abyss") { window.location.href = "mode5_dungeon.html"; return; }
+  if (scene.state.mode === "kingcast") initKingMode(scene);
   scene.state.phase = "walk";
   scene.startPanel.setVisible(false);
   scene.startText.setVisible(false);
   scene.startModeA.setVisible(false).disableInteractive();
   scene.startModeB.setVisible(false).disableInteractive();
   scene.startModeC.setVisible(false).disableInteractive();
+  scene.startModeD.setVisible(false).disableInteractive();
+  scene.startModeE.setVisible(false).disableInteractive();
   scene.startSound.setVisible(false).disableInteractive();
   scene.startFullscreen.setVisible(false).disableInteractive();
   scene.startButton.setVisible(false).disableInteractive();
@@ -505,6 +657,8 @@ function setMode(scene, mode) {
   scene.startModeA.setColor(mode === "scroll" ? "#f0b24b" : "#f4f1e8");
   scene.startModeB.setColor(mode === "raycast" ? "#f0b24b" : "#f4f1e8");
   scene.startModeC.setColor(mode === "board" ? "#f0b24b" : "#f4f1e8");
+  scene.startModeD.setColor(mode === "kingcast" ? "#f0b24b" : "#f4f1e8");
+  scene.startModeE.setColor(mode === "abyss" ? "#f0b24b" : "#f4f1e8");
 }
 
 function toggleSound(scene) {
@@ -547,68 +701,138 @@ const RAY_MAP = [
   "1111111",
 ];
 
+function rayHash(x, y, salt) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(salt | 0, 224682251);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+function rayShade(rgb, k) {
+  k = Phaser.Math.Clamp(k, 0.06, 1);
+  return `rgb(${Math.round(rgb[0] * k)},${Math.round(rgb[1] * k)},${Math.round(rgb[2] * k)})`;
+}
+
+function rayIsWall(x, y) {
+  return RAY_MAP[Math.floor(y)]?.[Math.floor(x)] !== "0";
+}
+
 function advanceRay(scene, step) {
   const s = scene.state;
   const nx = s.rayX + Math.cos(s.rayDir) * step;
   const ny = s.rayY + Math.sin(s.rayDir) * step;
-  if (RAY_MAP[Math.floor(ny)]?.[Math.floor(nx)] === "0") { s.rayX = nx; s.rayY = ny; return; }
+  if (!rayIsWall(nx, ny)) { s.rayX = nx; s.rayY = ny; return; }
   s.rayDir += Math.PI / 2;
 }
 
+function drawRayFloorCeiling(ctx, w, h, cam, horizon, flick) {
+  const img = ctx.createImageData(w, h);
+  const data = img.data;
+  const leftX = cam.dirX - cam.planeX, leftY = cam.dirY - cam.planeY;
+  const rightX = cam.dirX + cam.planeX, rightY = cam.dirY + cam.planeY;
+  for (let y = 0; y < h; y++) {
+    const floorSide = y > horizon;
+    const p = Math.max(1, floorSide ? y - horizon : horizon - y);
+    const rowDist = (0.5 * h) / p;
+    const stepX = rowDist * (rightX - leftX) / w;
+    const stepY = rowDist * (rightY - leftY) / w;
+    let fx = cam.x + rowDist * leftX;
+    let fy = cam.y + rowDist * leftY;
+    const light = Math.min(1, 2.2 / (1 + rowDist * rowDist * 0.42)) * flick;
+    for (let x = 0; x < w; x++) {
+      const cx = Math.floor(fx), cy = Math.floor(fy);
+      const tx = fx - cx, ty = fy - cy;
+      const j = rayHash(cx, cy, floorSide ? 3 : 7);
+      let r, g, b;
+      if (floorSide) {
+        const tone = 0.72 + j * 0.48;
+        r = 86 * tone; g = 78 * tone; b = 66 * tone;
+        if (((cx + cy) & 1) === 0) { r *= 0.86; g *= 0.86; b *= 0.86; }
+        if (tx < 0.08 || ty < 0.08) { r *= 0.38; g *= 0.38; b *= 0.38; }
+      } else {
+        const tone = 0.5 + j * 0.8;
+        r = 32 * tone; g = 30 * tone; b = 36 * tone;
+        if (j > 0.94) { r *= 1.45; g *= 1.35; b *= 1.25; }
+      }
+      const li = floorSide ? light : Math.min(1, light * 0.5 + 0.04);
+      const idx = (y * w + x) * 4;
+      data[idx] = r * li; data[idx + 1] = g * li; data[idx + 2] = b * li; data[idx + 3] = 255;
+      fx += stepX; fy += stepY;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 function drawRaycastView(scene) {
-  const g = scene.corridor;
   const tex = scene.floorCanvas;
   const ctx = tex.context;
-  const wall = scene.textures.get("wall").getSourceImage();
-  const floor = scene.textures.get("floor").getSourceImage();
-  const fov = Math.PI / 3;
-  const horizon = Math.floor(H * 0.48);
-  ctx.clearRect(0, 0, W, H);
+  const w = W, h = H;
+  ctx.clearRect(0, 0, w, h);
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#101615";
-  ctx.fillRect(0, 0, W, horizon);
 
-  const floorSpeed = scene.state.walkScroll * 280;
-  for (let y = horizon; y < H; y += 4) {
-    const p = (y - horizon) / (H - horizon);
-    const depth = 1 / Math.max(0.05, p);
-    const roadW = Phaser.Math.Linear(90, W * 1.35, p * p);
-    const left = W / 2 - roadW / 2;
-    const sampleW = Math.floor(floor.width * Phaser.Math.Clamp(0.45 + p * 0.5, 0.45, 0.95));
-    const sampleX = Math.floor((floor.width - sampleW) / 2);
-    const sampleY = Math.floor((floorSpeed + depth * 220) % (floor.height - 24));
-    const sampleH = Math.floor(8 + p * 28);
-    ctx.globalAlpha = Phaser.Math.Clamp(0.35 + p * 0.7, 0.35, 1);
-    ctx.drawImage(floor, sampleX, sampleY, sampleW, sampleH, left, y, roadW, 4);
-  }
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
-  ctx.fillRect(0, horizon, W, 80);
+  const dirX = Math.cos(scene.state.rayDir);
+  const dirY = Math.sin(scene.state.rayDir);
+  const fov = 0.72;
+  const cam = { x: scene.state.rayX, y: scene.state.rayY, dirX, dirY, planeX: -dirY * fov, planeY: dirX * fov };
+  const horizon = Math.round(h * 0.5 + Math.sin(scene.state.timer * 8) * 5);
+  const flick = 1 + 0.06 * Math.sin(scene.state.timer * 9.3) + 0.04 * Math.sin(scene.state.timer * 22.7);
+  drawRayFloorCeiling(ctx, w, h, cam, horizon, flick);
 
-  for (let x = 0; x < W; x += 3) {
-    const ray = scene.state.rayDir - fov / 2 + (x / W) * fov;
-    let dist = 0.05, hitX = 0, hitY = 0, hit = false;
-    while (!hit && dist < 8) {
-      hitX = scene.state.rayX + Math.cos(ray) * dist;
-      hitY = scene.state.rayY + Math.sin(ray) * dist;
-      hit = RAY_MAP[Math.floor(hitY)]?.[Math.floor(hitX)] !== "0";
-      if (!hit) dist += 0.025;
+  for (let x = 0; x < w; x += 2) {
+    const cameraX = 2 * x / w - 1;
+    const rayDirX = cam.dirX + cam.planeX * cameraX;
+    const rayDirY = cam.dirY + cam.planeY * cameraX;
+    let mapX = Math.floor(cam.x), mapY = Math.floor(cam.y);
+    const deltaX = Math.abs(1 / (rayDirX || 1e-6));
+    const deltaY = Math.abs(1 / (rayDirY || 1e-6));
+    let stepX, stepY, sideDistX, sideDistY;
+    if (rayDirX < 0) { stepX = -1; sideDistX = (cam.x - mapX) * deltaX; } else { stepX = 1; sideDistX = (mapX + 1 - cam.x) * deltaX; }
+    if (rayDirY < 0) { stepY = -1; sideDistY = (cam.y - mapY) * deltaY; } else { stepY = 1; sideDistY = (mapY + 1 - cam.y) * deltaY; }
+    let side = 0, guard = 0;
+    while (!rayIsWall(mapX, mapY) && guard++ < 64) {
+      if (sideDistX < sideDistY) { sideDistX += deltaX; mapX += stepX; side = 0; }
+      else { sideDistY += deltaY; mapY += stepY; side = 1; }
     }
-    const corrected = dist * Math.cos(ray - scene.state.rayDir);
-    const wallH = Math.min(H, H / Math.max(0.18, corrected));
-    const y = H / 2 - wallH / 2 + 80;
-    const fracX = Math.abs(hitX - Math.floor(hitX));
-    const fracY = Math.abs(hitY - Math.floor(hitY));
-    const sampleX = Math.floor((Math.abs(fracX - 0.5) > Math.abs(fracY - 0.5) ? fracY : fracX) * wall.width) % wall.width;
-    ctx.globalAlpha = Phaser.Math.Clamp(1.05 - corrected * 0.1, 0.35, 0.95);
-    ctx.drawImage(wall, sampleX, 0, 3, wall.height, x, y, 3, wallH);
-    ctx.fillStyle = `rgba(0,0,0,${Phaser.Math.Clamp(corrected * 0.08, 0.05, 0.55)})`;
-    ctx.fillRect(x, y, 3, wallH);
+    const perp = side === 0 ? (mapX - cam.x + (1 - stepX) / 2) / (rayDirX || 1e-6) : (mapY - cam.y + (1 - stepY) / 2) / (rayDirY || 1e-6);
+    const dist = Math.max(0.05, perp);
+    const wallH = h / dist;
+    const y0 = Math.max(0, horizon - wallH / 2);
+    const y1 = Math.min(h, horizon + wallH / 2);
+    let wallX = side === 0 ? cam.y + perp * rayDirY : cam.x + perp * rayDirX;
+    wallX -= Math.floor(wallX);
+    const light = (1.45 / (1 + dist * 0.55)) * flick;
+    const fog = 1 / (1 + dist * dist * 0.055);
+    const base = side === 1 ? [92, 78, 68] : [128, 108, 88];
+    const moss = rayHash(mapX, mapY, 53) > 0.62;
+    const rows = 4;
+    const segH = (y1 - y0) / rows;
+    for (let r = 0; r < rows; r++) {
+      const sy0 = y0 + segH * r;
+      const sy1 = r === rows - 1 ? y1 : y0 + segH * (r + 1);
+      const bu = wallX * 2 + (r % 2 ? 0.5 : 0);
+      const bf = bu - Math.floor(bu);
+      const joint = bf < 0.09;
+      const bj = 0.78 + rayHash(mapX * 3 + Math.floor(bu), mapY * 5 + r, 29) * 0.38;
+      let tint = base;
+      let k = light * fog * bj;
+      if (r === rows - 1 && moss) { tint = [base[0] * 0.58, base[1] * 0.82, base[2] * 0.55]; k *= 0.85; }
+      if (joint) k *= 0.38;
+      ctx.fillStyle = rayShade(tint, k);
+      ctx.fillRect(x, sy0, 2, Math.max(1, sy1 - sy0));
+      if (r > 0) { ctx.fillStyle = rayShade(base, light * fog * 0.26); ctx.fillRect(x, sy0 - 1, 2, 1); }
+    }
+    const ao = Math.min(0.5, 0.3 * fog + 0.12);
+    ctx.fillStyle = `rgba(0,0,0,${ao.toFixed(3)})`;
+    ctx.fillRect(x, y0, 2, Math.max(1, segH * 0.12));
+    ctx.fillRect(x, y1 - Math.max(1, segH * 0.18), 2, Math.max(1, segH * 0.18));
   }
-  ctx.globalAlpha = 1;
+
+  const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.14, w / 2, h / 2, h * 0.74);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(1, "rgba(0,0,0,0.74)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, w, h);
   tex.refresh();
-  g.clear();
-  g.fillStyle(0x000000, 0.16).fillRect(0, 0, W, H);
+  scene.corridor.clear();
   for (const prop of scene.props) prop.sprite.setVisible(false);
 }
 
@@ -676,6 +900,8 @@ function startBoardMode(scene) {
   scene.startModeA.setVisible(false).disableInteractive();
   scene.startModeB.setVisible(false).disableInteractive();
   scene.startModeC.setVisible(false).disableInteractive();
+  scene.startModeD.setVisible(false).disableInteractive();
+  scene.startModeE.setVisible(false).disableInteractive();
   scene.startSound.setVisible(false).disableInteractive();
   scene.startFullscreen.setVisible(false).disableInteractive();
   scene.startButton.setVisible(false).disableInteractive();
