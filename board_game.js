@@ -1777,13 +1777,12 @@ function renderBosses(scene, c) {
 function renderSettings(scene, c) {
   addText(scene, c, 24, 76, "설정", 26, UI_THEME.ink);
   addHelpButton(scene, c, "settings");
-  addPanel(scene, c, 24, 124, 492, 106, ["게임 목표", "필드보스를 순찰에 보내 몬스터를 영입하고 자원을 회수하세요.", "Soul로 던전을 확장하고 침입하는 용사에 대응합니다."]);
-  addRect(scene, c, 24, 258, 492, 280, UI_THEME.panel, 1, UI_THEME.border);
-  addText(scene, c, 48, 288, "시스템", 21, UI_THEME.gold);
-  addButton(scene, c, 54, 338, 190, 58, scene.state.soundOn ? "소리 ON" : "소리 OFF", () => { toggleSound(scene); renderBoard(scene); }, scene.state.soundOn ? "growth" : "default");
-  addButton(scene, c, 294, 338, 190, 58, scene.state.fullscreenOn ? "화면 축소" : "전체화면", () => { toggleFullscreen(scene); setTimeout(() => renderBoard(scene), 140); }, "primary");
-  addButton(scene, c, 54, 428, 430, 58, "데모 데이터 초기화", () => showStartResetConfirm(scene), "danger");
-  addText(scene, c, 48, 566, "데모용 기능입니다. 초기화하면 인트로 표시 여부도 초기화됩니다.", 13, UI_THEME.muted);
+  addRect(scene, c, 24, 124, 492, 280, UI_THEME.panel, 1, UI_THEME.border);
+  addText(scene, c, 48, 154, "시스템", 21, UI_THEME.gold);
+  addButton(scene, c, 54, 204, 190, 58, scene.state.soundOn ? "소리 ON" : "소리 OFF", () => { toggleSound(scene); renderBoard(scene); }, scene.state.soundOn ? "growth" : "default");
+  addButton(scene, c, 294, 204, 190, 58, scene.state.fullscreenOn ? "화면 축소" : "전체화면", () => { toggleFullscreen(scene); setTimeout(() => renderBoard(scene), 140); }, "primary");
+  addButton(scene, c, 54, 294, 430, 58, "데모 데이터 초기화", () => showStartResetConfirm(scene), "danger");
+  addText(scene, c, 48, 432, "데모용 기능입니다. 초기화하면 인트로 표시 여부도 초기화됩니다.", 13, UI_THEME.muted);
 }
 
 
@@ -2176,7 +2175,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826be", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826bf", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
