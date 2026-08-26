@@ -1353,7 +1353,7 @@ function addCodexSprite(scene, c, id, x, y, scale = 2, opts = {}) {
 }
 
 function isCodexDiscovered(scene, id) {
-  return scene.board?.dexAllDiscovered === true || scene.board?.discoveredCodex?.has?.(id);
+  return scene.board?.dexAllDiscovered === true || scene.board?.ownedMonsterIds?.has?.(id);
 }
 
 function codexPoolForArea(area, kind) {
@@ -1989,7 +1989,7 @@ function renderDex(scene, c) {
     addCodexSprite(scene, c, m.id, 57, y + 30, isBoss ? 1.35 : 1.15, { hidden: !discovered });
     addText(scene, c, 92, y + 8, discovered ? `${m.n}${isBoss ? "  FIELD BOSS" : ""}` : "???", 15, isBoss ? "#ffd76a" : "#f4f1e8");
     addText(scene, c, 92, y + 30, discovered ? `${m.dep} · ${m.el} · ${"★".repeat(m.r)} · Lv.${m.lv}` : "미발견", 12, "#c9c2b8");
-    addText(scene, c, 305, y + 30, discovered ? `HP ${m.hp} 공 ${m.at} 방 ${m.df} 민 ${m.sd}` : "순찰 중 만나면 기록", 11, discovered ? "#8bd17c" : "#777");
+    addText(scene, c, 305, y + 30, discovered ? `HP ${m.hp} 공 ${m.at} 방 ${m.df} 민 ${m.sd}` : "영입하면 기록", 11, discovered ? "#8bd17c" : "#777");
   });
   addPager(scene, c, 690, dungeonNo - 1, data.dungeons.length, (next) => {
     scene.board.dexDungeon = next + 1;
@@ -2084,7 +2084,6 @@ function rollMonsterRecruit(scene, event, methodKey = "force") {
     d.households = Math.min(d.capacity, d.households + (great ? 2 : 1));
     run.rewards.monsters += great ? 2 : 1;
     scene.board.ownedMonsterIds?.add?.(event.entityId);
-    scene.board.discoveredCodex?.add?.(event.entityId);
   }
   event.lines = [
     "떠돌이 몬스터를 만났다.",
@@ -2221,7 +2220,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826br", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826bu", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
@@ -2544,10 +2543,11 @@ function addRexButton(scene, x, y, w, h, label, fn) {
 function addPager(scene, c, y, page, total, setPage) {
   const max = Math.max(1, total || 1);
   const current = Phaser.Math.Clamp(page || 0, 0, max - 1);
-  addButton(scene, c, 48, y, 120, 48, "이전", () => setPage(Math.max(0, current - 1)), current > 0 ? "default" : "disabled");
-  addRect(scene, c, 208, y, 124, 48, 0x0d1110, 1, 0x32382f);
-  addText(scene, c, 270, y + 24, `${current + 1}/${max}`, 16, "#c9c2b8").setOrigin(0.5);
-  addButton(scene, c, 372, y, 120, 48, "다음", () => setPage(Math.min(max - 1, current + 1)), current < max - 1 ? "default" : "disabled");
+  const h = 48, btn = 38;
+  addRect(scene, c, 154, y, 232, h, 0x090d0c, 1, 0x344138);
+  addButton(scene, c, 166, y + 5, 42, btn, "‹", () => setPage(Math.max(0, current - 1)), current > 0 ? "default" : "disabled");
+  addText(scene, c, 270, y + h / 2, `${current + 1} / ${max}`, 15, "#c9c2b8").setOrigin(0.5);
+  addButton(scene, c, 332, y + 5, 42, btn, "›", () => setPage(Math.min(max - 1, current + 1)), current < max - 1 ? "default" : "disabled");
 }
 
 function addText(scene, c, x, y, value, size, color = "#f4f1e8", depth = 61) {
