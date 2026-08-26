@@ -153,8 +153,8 @@ function create() {
   this.startModeD = text(this, W / 2 - 150, H / 2 - 62, "KING-3D", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
   this.startModeE = text(this, W / 2, H / 2 - 62, "ABYSS", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
   this.startModeF = text(this, W / 2 + 150, H / 2 - 62, "BOARD-TOUR", 13).setOrigin(0.5).setDepth(41).setInteractive({ useHandCursor: true });
-  this.startSound = this.add.image(W - 98, 86, "soundOffIcon").setDisplaySize(50, 50).setDepth(41).setInteractive({ useHandCursor: true });
-  this.startFullscreen = this.add.image(W - 42, 86, "fullscreenEnterIcon").setDisplaySize(50, 50).setDepth(41).setInteractive({ useHandCursor: true });
+  this.startSound = this.add.image(W - 98, 86, "soundOffIcon").setDisplaySize(50, 50).setDepth(41).setVisible(false);
+  this.startFullscreen = this.add.image(W - 42, 86, "fullscreenEnterIcon").setDisplaySize(50, 50).setDepth(41).setVisible(false);
   this.startHit = this.add.rectangle(W / 2, H / 2 + 42, 230, 68, 0x2a211b, 0.92).setDepth(41).setInteractive({ useHandCursor: true });
   this.startHit.setStrokeStyle(3, 0xf4f1e8, 0.9);
   this.startButton = text(this, W / 2, H / 2 + 42, "시작하기", 26).setOrigin(0.5).setDepth(42).setInteractive({ useHandCursor: true });
@@ -175,8 +175,6 @@ function create() {
   this.startModeE.on("pointerdown", () => setMode(this, "abyss"));
   this.startModeF.on("pointerdown", () => setMode(this, "boardTour"));
   [this.startModeA, this.startModeB, this.startModeC, this.startModeD, this.startModeE, this.startModeF].forEach((m) => m.setVisible(false).disableInteractive());
-  this.startSound.on("pointerdown", () => toggleSound(this));
-  this.startFullscreen.on("pointerdown", () => toggleFullscreen(this));
   drawUiIcons(this);
   setMode(this, "board");
   this.startHit.on("pointerdown", () => startGame(this));
@@ -184,8 +182,10 @@ function create() {
   this.input.on("pointerdown", () => {
     if (this.board?.step === "intro" && this.board.introReady) {
       localStorage.setItem("pob_intro_seen", "1");
-      this.board.step = "choose";
-      renderBoard(this);
+      fadeTransition(() => {
+        this.board.step = "choose";
+        renderBoard(this);
+      });
       return;
     }
     if (this.board?.step === "chosen") {
@@ -730,12 +730,34 @@ function startWalkSound(scene) {
   if (!scene.sfx.walk.isPlaying) safePlay(scene.sfx.walk);
 }
 
+function fadeTransition(fn) {
+  if (window.__pobFading) return;
+  window.__pobFading = true;
+  const ov = document.createElement("div");
+  Object.assign(ov.style, {
+    position: "fixed", inset: "0", zIndex: "10050", background: "#000",
+    opacity: "0", pointerEvents: "none", transition: "opacity 150ms linear",
+  });
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => { ov.style.opacity = "1"; });
+  setTimeout(() => {
+    try { fn?.(); } finally {
+      ov.style.opacity = "0";
+      setTimeout(() => { ov.remove(); window.__pobFading = false; }, 160);
+    }
+  }, 150);
+}
+
 function startGame(scene) {
   requestMobileFullscreen(scene);
+  scene.state.soundOn = true;
+  scene.sound.mute = false;
+  if (!scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
+  drawUiIcons(scene);
   scene.startButton.setText("시작하기");
   scene.startHit.setAlpha(0.92);
-  if (scene.state.mode === "board") return startBoardMode(scene, false);
-  if (scene.state.mode === "boardTour") return startBoardMode(scene, true);
+  if (scene.state.mode === "board") return fadeTransition(() => startBoardMode(scene, false));
+  if (scene.state.mode === "boardTour") return fadeTransition(() => startBoardMode(scene, true));
   if (scene.state.mode === "abyss") { window.location.href = "mode5_dungeon.html"; return; }
   if (scene.state.mode === "kingcast") initKingMode(scene);
   scene.state.phase = "walk";
@@ -1074,9 +1096,11 @@ function ensureInitialGuardian(scene) {
 
 function enterDungeonAfterGuardian(scene) {
   localStorage.setItem("pob_guardian_chosen", "1");
-  ensureInitialGuardian(scene);
-  scene.board.step = "main";
-  renderBoard(scene);
+  fadeTransition(() => {
+    ensureInitialGuardian(scene);
+    scene.board.step = "main";
+    renderBoard(scene);
+  });
 }
 
 function recruitInitialBoss(scene, boss) {
@@ -1092,10 +1116,12 @@ function recruitInitialBoss(scene, boss) {
   scene.board.chosenName = boss.name;
   scene.board.dungeon.bosses = 1;
   scene.board.logs.unshift(`${boss.name} 소환 의식 결과, 슬라임이 입주했다.`);
-  scene.board.step = "chosen";
-  scene.board.chosenTimer = 0;
-  scene.board.chosenReady = false;
-  renderBoard(scene);
+  fadeTransition(() => {
+    scene.board.step = "chosen";
+    scene.board.chosenTimer = 0;
+    scene.board.chosenReady = false;
+    renderBoard(scene);
+  });
 }
 
 function makeBoardAreas() {
@@ -1192,7 +1218,7 @@ function pushDungeonFeed(scene, line) {
   const feed = scene.board.dungeonFeed || (scene.board.dungeonFeed = []);
   if (feed[0] === line) return;
   feed.unshift(line);
-  feed.length = Math.min(feed.length, 3);
+  feed.length = Math.min(feed.length, 2);
 }
 
 function updateDungeonFeed(scene, dt) {
@@ -1217,9 +1243,9 @@ function updateDungeonFeed(scene, dt) {
 
 function ownedDungeonMonsters(scene) {
   const data = codexData();
-  const owned = scene?.board?.ownedMonsterIds || new Set([1, 108]);
+  const owned = scene?.board?.ownedMonsterIds || new Set([1, 2]);
   let pool = data.monsters.filter((m) => owned.has(m.id) && m.dep !== "BOSS");
-  if (!pool.length) pool = data.monsters.filter((m) => m.sp === "slime" || m.id === 1 || m.id === 108);
+  if (!pool.length) pool = data.monsters.filter((m) => m.sp === "slime" || m.id === 1 || m.id === 2 || /버섯|shroom/i.test(`${m.n} ${m.sp}`));
   return pool;
 }
 
@@ -1228,7 +1254,7 @@ function recruitedDungeonBosses(scene) {
   return bosses.length ? bosses : [{ codexId: 1, name: "슬라임" }];
 }
 
-function makeDungeonDweller(kind = "monster", edge = false, scene = null) {
+function makeDungeonDweller(kind = "monster", edge = false, scene = null, forcedEnt = null) {
   const data = codexData();
   const monsters = ownedDungeonMonsters(scene);
   const bosses = recruitedDungeonBosses(scene);
@@ -1236,7 +1262,7 @@ function makeDungeonDweller(kind = "monster", edge = false, scene = null) {
   const hero = kind === "hero";
   const boss = kind === "boss";
   const pool = hero ? heroes : boss ? bosses : monsters;
-  const ent = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  const ent = forcedEnt || (pool.length ? pool[Math.floor(Math.random() * pool.length)] : null);
   const b = DUNGEON_ACTOR_BOUNDS;
   const speedX = 10 + Math.random() * 14;
   return {
@@ -1256,7 +1282,13 @@ function makeDungeonDweller(kind = "monster", edge = false, scene = null) {
 
 function makeDungeonDwellers(count = 12, scene = null) {
   const list = [makeDungeonDweller("boss", false, scene)];
-  while (list.length < count) list.push(makeDungeonDweller(list.length % 2 ? "hero" : "monster", false, scene));
+  const monsters = ownedDungeonMonsters(scene);
+  let mi = 0;
+  while (list.length < count) {
+    const kind = list.length % 2 ? "hero" : "monster";
+    const ent = kind === "monster" && monsters.length ? monsters[mi++ % monsters.length] : null;
+    list.push(makeDungeonDweller(kind, false, scene, ent));
+  }
   return list;
 }
 
@@ -1378,10 +1410,10 @@ function startBoardMode(scene, tourVisual = false) {
     battle: null,
     invasion: false,
     powerUsed: false,
-    ownedMonsterIds: new Set([1, 108]),
-    discoveredCodex: new Set([1, 108]),
+    ownedMonsterIds: new Set([1, 2]),
+    discoveredCodex: new Set([1, 2]),
     dexAllDiscovered: false,
-    dwellers: makeDungeonDwellers(12),
+    dwellers: [],
     dungeonActors: [],
     dustEffects: [],
     dungeonLogTimer: 0,
@@ -1393,6 +1425,7 @@ function startBoardMode(scene, tourVisual = false) {
     tourVisual,
   };
   if (guardianChosen) ensureInitialGuardian(scene);
+  scene.board.dwellers = makeDungeonDwellers(12, scene);
   renderBoard(scene);
 }
 
@@ -1618,8 +1651,10 @@ function renderIntro(scene, c) {
   if (complete) {
     addButton(scene, c, 96, 776, 348, 64, "첫 수호자 소환", () => {
       localStorage.setItem("pob_intro_seen", "1");
-      scene.board.step = "choose";
-      renderBoard(scene);
+      fadeTransition(() => {
+        scene.board.step = "choose";
+        renderBoard(scene);
+      });
     }, "growth");
   }
 }
@@ -1696,8 +1731,8 @@ function renderDungeon(scene, c) {
   addRect(scene, c, 36, 170, 468, 524, 0x000000, 0.24);
   addRect(scene, c, 24, 716, 492, 82, 0x090d0d, 0.9, 0x263129);
   addText(scene, c, 42, 730, "던전 관찰 로그", 14, "#8bd17c");
-  (scene.board.dungeonFeed || []).slice(0, 3).forEach((line, i) => {
-    addText(scene, c, 42, 754 + i * 18, line, 13, i === 0 ? "#f4f1e8" : "#9fa89d");
+  (scene.board.dungeonFeed || []).slice(0, 2).forEach((line, i) => {
+    addText(scene, c, 42, 756 + i * 22, line, 13, i === 0 ? "#f4f1e8" : "#9fa89d");
   });
 
   const targetCount = Math.max(6, Math.min(18, d.households));
@@ -2163,6 +2198,7 @@ function renderExploreRun(scene, c) {
 
 
 function openComppTour(scene) {
+  fadeTransition(() => {
   closeComppTour(false);
   scene.sfx?.bgm?.stop();
   const wrap = document.createElement("div");
@@ -2175,7 +2211,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826bf", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826bl", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
@@ -2189,6 +2225,7 @@ function openComppTour(scene) {
   window.addEventListener("message", window.__pobTourMessageHandler);
   wrap.appendChild(frame);
   document.body.appendChild(wrap);
+  });
 }
 
 function closeComppTour(render = true) {
@@ -2220,6 +2257,11 @@ function completeComppTour(scene, result = null) {
     if (result.exp) addBossExp(scene, run.boss, result.exp);
     run.maxHp = run.boss.maxHp;
     run.hp = Math.min(run.maxHp, Math.max(0, run.hp));
+    for (const m of result.monsterRecruits || []) {
+      if (!m?.id) continue;
+      scene.board.ownedMonsterIds?.add?.(m.id);
+      scene.board.discoveredCodex?.add?.(m.id);
+    }
     if (result.bossRecruit?.id) {
       const target = scene.board.bosses.find((boss) => boss.codexId === result.bossRecruit.id);
       if (target && !target.recruited) {
@@ -2239,10 +2281,12 @@ function completeComppTour(scene, result = null) {
     run.shown.push(run.hp <= 0 ? `${run.boss.name}이 기절해 귀환했다.` : `${run.steps}걸음 지점에서 순찰을 마치고 귀환한다.`);
   }
   run.finished = true;
-  scene.board.step = "exploreRun";
-  closeComppTour(false);
-  if (scene.state.soundOn && !scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
-  renderBoard(scene);
+  fadeTransition(() => {
+    scene.board.step = "exploreRun";
+    closeComppTour(false);
+    if (scene.state.soundOn && !scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
+    renderBoard(scene);
+  });
 }
 
 function advancePatrolLine(scene) {
@@ -2363,11 +2407,13 @@ function patrolSummary(run) {
 function finishPatrol(scene) {
   const run = scene.board.exploreRun;
   if (run?.boss) { run.boss.hp = run.boss.maxHp; run.boss.status = "대기"; }
-  scene.board.step = "main";
-  scene.board.tab = "explore";
-  scene.board.exploreRun = null;
-  scene.board.typewriter = null;
-  renderBoard(scene);
+  fadeTransition(() => {
+    scene.board.step = "main";
+    scene.board.tab = "explore";
+    scene.board.exploreRun = null;
+    scene.board.typewriter = null;
+    renderBoard(scene);
+  });
 }
 
 function startBoardBattle(scene, event = null) {

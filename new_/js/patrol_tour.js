@@ -880,7 +880,7 @@ function resolveTourRecruit(e,method){
   if(method==='force'){TOUR.result.hp=Math.max(1,(TOUR.result.hp||90)-1);TOUR.bossHp=TOUR.result.hp;}
   else TOUR.result.soul-=1;
   TOUR.result.exp+=success?(great?14:8):3;
-  if(success)TOUR.result.households+=great?2:1;
+  if(success){TOUR.result.households+=great?2:1;TOUR.result.monsterRecruits.push({id:e.ent.id,name:e.ent.n});}
   const line=`${e.ent.n} ${great?'영입 대성공':success?'영입 성공':'영입 실패'}`;
   TOUR.result.logs.push(line);
   showResultBanner(great?'영입 대성공!':success?'영입 성공':'영입 실패', e.ent.n, success?'ok':'fail');
@@ -985,7 +985,7 @@ function startTour(){
   if(!ok)return;
   px=startPos.x;py=startPos.y;ang=startAng;
   bobPhase=0;bobAmt=0;lastStepPh=0;walkCount=0;lastWalkCell=`${px|0},${py|0}`;msgQueue=[];hideJoy();keys.clear();
-  TOUR={path:[],enc:null,ev:null,count:0,maxSteps:tourMaxSteps,bossName:tourBossName,bossHp:tourBossHp,bossMax:tourBossMaxHp,bossAtk:tourBossAtk,bossDef:tourBossDef,nextEncAt:performance.now()+tourDelay(2800+RND(0,2600)),result:{soul:0,notoriety:0,households:0,hp:tourBossHp,steps:0,exp:0,logs:[]}};
+  TOUR={path:[],enc:null,ev:null,count:0,maxSteps:tourMaxSteps,bossName:tourBossName,bossHp:tourBossHp,bossMax:tourBossMaxHp,bossAtk:tourBossAtk,bossDef:tourBossDef,nextEncAt:performance.now()+tourDelay(2800+RND(0,2600)),result:{soul:0,notoriety:0,households:0,hp:tourBossHp,steps:0,exp:0,monsterRecruits:[],logs:[]}};
   tourPlan();
   gameState='tour';
   document.exitPointerLock?.();
