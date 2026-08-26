@@ -202,7 +202,7 @@ function create() {
         }
       }
     }
-    if (this.board?.step === "exploreRun" && this.board.typewriter) {
+    if (!this.board?.tourOpen && this.board?.step === "exploreRun" && this.board.typewriter) {
       this.board.typewriter.chars = this.board.typewriter.full.length;
       renderBoard(this);
     }
@@ -2124,7 +2124,7 @@ function startExploreRun(scene, idx) {
   if (!boss || boss.ap <= 0) { scene.board.logs.unshift("순찰 가능한 행동력이 부족하다."); return renderBoard(scene); }
   boss.ap -= 1;
   boss.status = "순찰";
-  scene.board.step = "exploreRun";
+  scene.board.tourOpen = true;
   const nodes = rollPatrolEvents(idx, scene);
   scene.board.exploreRun = { idx, boss, event: 0, line: 0, timer: 0, steps: 0, maxSteps: nodes.maxSteps || 64, nodes, shown: [`${boss.name}이 ${area.name} 순찰을 시작했다.`], rewards: { soul: 0, notoriety: 0, monsters: 0, clues: 0, exp: 0, levelUps: 0 }, hp: boss.hp, maxHp: boss.maxHp, finished: false };
   scene.board.typewriter = { full: scene.board.exploreRun.shown.join("\n"), chars: 0 };
@@ -2176,7 +2176,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826ba", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826bd", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {

@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>POB 순찰 투어</title>
+<script>if(parent&&parent!==window)document.documentElement.classList.add('embedded');</script>
 <style>
   html,body{
     margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;
@@ -18,6 +19,7 @@
   #cv,#gen{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000;}
   #cv{image-rendering:pixelated;image-rendering:crisp-edges;}
   .hidden{display:none!important;}
+  html.embedded #overlay{display:none!important;}
 
   #joyBase{position:fixed;width:128px;height:128px;border-radius:50%;display:none;z-index:5;
     border:2px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);pointer-events:none;}
@@ -356,6 +358,6 @@
 <script src="js/pixelcodex.js?v=20260826c"></script>
 <script src="js/engine-core.js"></script>
 <script src="js/worldgen.js"></script>
-<script src="js/patrol_tour.js?v=20260826ba"></script>
+<script src="js/patrol_tour.js?v=20260826bd"></script>
 </body>
 </html>

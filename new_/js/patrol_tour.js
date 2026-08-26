@@ -1001,11 +1001,12 @@ function endTour(){
   if(!TOUR || TOUR.sent)return;
   TOUR.sent=true;
   if(TOUR.result)TOUR.result.steps=walkCount;
-  try{ parent && parent !== window && parent.postMessage({type:'pob-tour-complete',result:TOUR&&TOUR.result}, '*'); }catch(e){}
+  const embedded=parent&&parent!==window;
+  try{ embedded && parent.postMessage({type:'pob-tour-complete',result:TOUR&&TOUR.result}, '*'); }catch(e){}
   TOUR=null;setDrone(false);hideJoy();keys.clear();
   const ov=document.getElementById('evOv');if(ov)ov.classList.add('hidden');
   gameState='title';
-  $('overlay').classList.remove('hidden');
+  if(!embedded)$('overlay').classList.remove('hidden');
   refreshUI();beep(300,.07,'triangle',.06);
 }
 
@@ -2286,6 +2287,7 @@ px=startPos.x;py=startPos.y;ang=startAng;
 aiReset();
 bootLoadTextures();   // 🎨 저장된 커스텀 텍스처 복원
 refreshUI();
+if(parent&&parent!==window)$('overlay').classList.add('hidden');
 
 function autoStartTour(){
   if(gameState==='tour')return;
