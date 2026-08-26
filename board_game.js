@@ -1288,6 +1288,7 @@ function codexPoolForArea(area, kind) {
 function startBoardMode(scene, tourVisual = false) {
   window.__pobScene = scene;
   scene.state.phase = "board";
+  if (scene.state.soundOn && !scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
   setRunHudVisible(scene, false);
   scene.startPanel.setVisible(false);
   scene.startDecor?.forEach((o) => o.setVisible(false));
@@ -2093,35 +2094,19 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826al", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
+  const qs = new URLSearchParams({ v: "20260826ao", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
     width: "min(100vw, 540px)", height: "100dvh", maxHeight: "960px",
     border: "0", background: "#000",
   });
-  const bar = document.createElement("div");
-  Object.assign(bar.style, {
-    position: "fixed", left: "50%", bottom: "calc(12px + env(safe-area-inset-bottom))",
-    transform: "translateX(-50%)", zIndex: "10000", display: "flex", gap: "8px",
-    fontFamily: "system-ui, sans-serif",
-  });
-  const done = document.createElement("button");
-  done.textContent = "순찰 결과 보기";
-  Object.assign(done.style, {
-    minHeight: "46px", padding: "0 18px", borderRadius: "8px",
-    border: "2px solid #65c45c", background: "#17361d", color: "#b6ff9c",
-    fontWeight: "800",
-  });
-  done.onclick = () => completeComppTour(scene);
   if (window.__pobTourMessageHandler) window.removeEventListener("message", window.__pobTourMessageHandler);
   window.__pobTourMessageHandler = (event) => {
     if (event?.data?.type === "pob-tour-complete") completeComppTour(scene, event.data.result);
   };
   window.addEventListener("message", window.__pobTourMessageHandler);
-  bar.appendChild(done);
   wrap.appendChild(frame);
-  wrap.appendChild(bar);
   document.body.appendChild(wrap);
 }
 
@@ -2174,6 +2159,7 @@ function completeComppTour(scene, result = null) {
   run.finished = true;
   scene.board.step = "exploreRun";
   closeComppTour(false);
+  if (scene.state.soundOn && !scene.sfx.bgm.isPlaying) safePlay(scene.sfx.bgm);
   renderBoard(scene);
 }
 

@@ -523,7 +523,7 @@ function stripBorderDark(base,w,h){
   const seen=new Uint8Array(w*h),q=[];
   const dark=i=>{
     const v=base[i],a=v>>>24,r=v&255,g=(v>>>8)&255,b=(v>>>16)&255;
-    return a>120&&r<18&&g<18&&b<22;
+    return a>80&&r<42&&g<42&&b<48;
   };
   const push=i=>{if(i>=0&&i<seen.length&&!seen[i]&&dark(i)){seen[i]=1;q.push(i);}};
   for(let x=0;x<w;x++){push(x);push((h-1)*w+x);}
@@ -546,9 +546,9 @@ function codexTex(id){
     const w=c.width,h=c.height,n=w*h;
     const base=new Uint32Array(c.getContext('2d').getImageData(0,0,w,h).data.buffer);
     const levels=[];
+    const clearBg=stripBorderDark(base,w,h);
     for(let l=0;l<16;l++){
       const f=l/15,arr=new Uint32Array(n);
-      const clearBg=stripBorderDark(base,w,h);
       for(let i=0;i<n;i++){
         const v=base[i];
         if(clearBg[i]){arr[i]=0;continue;}
@@ -2257,15 +2257,23 @@ function drawResultBanner(now){
   const left=resultBanner.until-now;
   const a=Math.min(1,age/180,left/260);
   const pop=1+0.08*Math.sin(Math.min(1,age/220)*Math.PI);
-  const w=Math.min(IW-34,260),h=68,x=(IW-w)/2,y=IH*0.42-h/2;
+  const w=Math.min(IW-28,280),h=86,x=(IW-w)/2,y=IH*0.42-h/2;
   const colors={ok:['rgba(18,50,26,','#9cff8a'],win:['rgba(60,44,12,','#ffd76a'],fail:['rgba(70,20,18,','#ff9b8a']};
   const c=colors[resultBanner.kind]||colors.ok;
   ctx.save();ctx.globalAlpha=a;ctx.translate(IW/2,y+h/2);ctx.scale(pop,pop);ctx.translate(-IW/2,-y-h/2);
   ctx.fillStyle=c[0]+'.92)';ctx.fillRect(x,y,w,h);
   ctx.strokeStyle=c[1];ctx.lineWidth=2;ctx.strokeRect(x+.5,y+.5,w-1,h-1);
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font=`bold ${Math.max(18,Math.round(IH*.055))}px monospace`;ctx.fillStyle=c[1];ctx.fillText(resultBanner.title,IW/2,y+26);
-  if(resultBanner.sub){ctx.font=`bold ${Math.max(11,Math.round(IH*.031))}px monospace`;ctx.fillStyle='#f4f1e8';ctx.fillText(resultBanner.sub,IW/2,y+50);}
+  const titleFont=`bold ${Math.max(15,Math.round(IH*.043))}px monospace`;
+  const subFont=`bold ${Math.max(10,Math.round(IH*.027))}px monospace`;
+  ctx.font=titleFont;ctx.fillStyle=c[1];
+  const titleLines=wrapCx(resultBanner.title,w-24,titleFont).slice(0,2);
+  titleLines.forEach((line,i)=>ctx.fillText(line,IW/2,y+22+i*17));
+  if(resultBanner.sub){
+    ctx.font=subFont;ctx.fillStyle='#f4f1e8';
+    const subLines=wrapCx(resultBanner.sub,w-24,subFont).slice(0,2);
+    subLines.forEach((line,i)=>ctx.fillText(line,IW/2,y+56+i*13));
+  }
   ctx.restore();
 }
 
