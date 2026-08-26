@@ -501,10 +501,12 @@ const CODEX_TEX={};
 const tourDelay=ms=>ms/tourSpeed;
 function setTourSpeed(v){
   tourSpeed=v;
-  [1,2,4].forEach(n=>{
-    const el=document.getElementById('tourSpd'+n);
-    if(el)el.classList.toggle('on',n===v);
-  });
+  const el=document.getElementById('tourSpeedToggle');
+  if(el){el.textContent='x'+v;el.classList.add('on');}
+}
+function cycleTourSpeed(){
+  setTourSpeed(tourSpeed===1?2:tourSpeed===2?4:1);
+  beep(520+tourSpeed*80,.05,'triangle',.06);
 }
 
 function codexReady(){
@@ -516,6 +518,23 @@ function codexReady(){
   }catch(e){}
   return PixelCodex.getEntity(1)!==null;
 }
+
+function stripBorderDark(base,w,h){
+  const seen=new Uint8Array(w*h),q=[];
+  const dark=i=>{
+    const v=base[i],a=v>>>24,r=v&255,g=(v>>>8)&255,b=(v>>>16)&255;
+    return a>120&&r<18&&g<18&&b<22;
+  };
+  const push=i=>{if(i>=0&&i<seen.length&&!seen[i]&&dark(i)){seen[i]=1;q.push(i);}};
+  for(let x=0;x<w;x++){push(x);push((h-1)*w+x);}
+  for(let y=0;y<h;y++){push(y*w);push(y*w+w-1);}
+  for(let qi=0;qi<q.length;qi++){
+    const i=q[qi],x=i%w,y=(i/w)|0;
+    if(x>0)push(i-1);if(x<w-1)push(i+1);if(y>0)push(i-w);if(y<h-1)push(i+w);
+  }
+  return seen;
+}
+
 function codexTex(id){
   /* ⚠ texFromImage 사용 금지(알파 255 강제) — 알파 채널 보존 변환 */
   if(CODEX_TEX[id])return CODEX_TEX[id];
@@ -529,8 +548,10 @@ function codexTex(id){
     const levels=[];
     for(let l=0;l<16;l++){
       const f=l/15,arr=new Uint32Array(n);
+      const clearBg=stripBorderDark(base,w,h);
       for(let i=0;i<n;i++){
         const v=base[i];
+        if(clearBg[i]){arr[i]=0;continue;}
         arr[i]=pack(((v&255)*f)|0,(((v>>>8)&255)*f)|0,(((v>>>16)&255)*f)|0,v>>>24);
       }
       levels.push(arr);
@@ -642,9 +663,34 @@ function tourPlan(){
   TOUR.path=path;
   if(!path.length)TOUR.nextEncAt=Math.min(TOUR.nextEncAt,performance.now()+tourDelay(800));
 }
+
+function collectNearbyGems(){
+  let collected=0;
+  for(const gm of gems){
+    if(gm.got)continue;
+    if((px-gm.x)**2+(py-gm.y)**2<0.42*0.42){
+      gm.got=true;gotCount++;collected++;sndPickup();vib(20);
+      const line=`보석 발견 ${gotCount}`;
+      pushMsg(`💎 ${line}`);
+      if(TOUR?.result)TOUR.result.logs.push(line);
+      if(gotCount===GEM_TOTAL){pushMsg('✨ 모든 보석을 발견했다');sndWin();vib([30,40,30]);}
+    }
+  }
+  return collected;
+}
+
 function markWalkCell(){
   const cell=`${px|0},${py|0}`;
-  if(cell!==lastWalkCell){ lastWalkCell=cell; walkCount++; }
+  if(cell===lastWalkCell)return false;
+  lastWalkCell=cell;walkCount++;
+  if(TOUR&&TOUR.maxSteps&&walkCount>=TOUR.maxSteps&&!TOUR.ending){
+    TOUR.ending=true;
+    TOUR.result.steps=walkCount;
+    TOUR.result.logs.push(`${walkCount}걸음 도달. 순찰을 마치고 귀환했다.`);
+    showResultBanner('순찰 완료', `${walkCount}/${TOUR.maxSteps}걸음`, 'ok');
+    setTimeout(()=>endTour(),900);
+  }
+  return true;
 }
 function tourWalk(dt){
   if(!TOUR.path.length){tourPlan();return;}
@@ -664,6 +710,7 @@ function tourWalk(dt){
       if(((bobPhase/Math.PI)|0)!==((lastStepPh/Math.PI)|0))sndStep();
       lastStepPh=bobPhase;
       markWalkCell();
+      collectNearbyGems();
     }else bobAmt=Math.max(0,bobAmt-dt*6);
   }else bobAmt=Math.max(0,bobAmt-dt*6);
   const cx=px|0,cy=py|0;
@@ -713,8 +760,8 @@ function tourSpawn(ex,ey,now){
   TOUR.enc={kind:boss?'boss':(ent.role?'hero':'monster'),
     ent,id,x:ex,y:ey,tex,cvs:PixelCodex.getFrames(id),
     t0:now,phase:0,frame:(Math.random()*4)|0,frameT:0,hold,
-    bossHp:TOUR.bossHp,bossMax:TOUR.bossMax,bossLag:1,bossAtk:TOUR.bossAtk,bossDef:TOUR.bossDef,bossHurt:0,
-    foeHp,foeMax:foeHp,foeLag:1,foeAtk,foeHurt:0,hitT:0,
+    bossHp:TOUR.result?.hp ?? TOUR.bossHp,bossMax:TOUR.bossMax,bossLag:1,bossAtk:TOUR.bossAtk,bossDef:TOUR.bossDef,bossHurt:0,
+    foeHp,foeMax:foeHp,foeLag:1,foeAtk,foeHurt:0,hitT:0,turn:'boss',turnWait:0,
     baseHW:boss?0.78:0.46,total:TOUR_APPEAR+hold+TOUR_LEAVE};
   ang=Math.atan2(ey-py,ex-px);
   TOUR.path=[];TOUR.count++;
@@ -748,25 +795,40 @@ function tourUpdate(dt,now){
         if(!e.awaitingChoice&&!e.choiceDone)tourOpenRecruitChoice(e);
         return;
       }else if(e.kind==='boss'){
-        if(t>=TOUR_APPEAR+Math.min(1500,e.hold*.55)){
-          e.phase=2;e.tOut=now;
-          pushMsg(`필드보스의 기척을 기록했다 — ${e.ent.n}`);
-          TOUR.result.logs.push(`필드보스 흔적: ${e.ent.n}`);
-        }
+        if(!e.awaitingChoice&&!e.choiceDone)tourOpenBossChoice(e);
+        return;
       }else{
         if(!e.awaitingChoice&&!e.choiceDone){tourOpenHeroChoice(e);return;}
         if(e.awaitingChoice)return;
+        e.turnWait=Math.max(0,(e.turnWait||0)-dt*tourSpeed);
+        if(e.turnWait>0)return;
         e.hitT+=dt*tourSpeed;
         if(e.hitT>=0.75){
           e.hitT=0;e.foeLag=Math.max(e.foeLag,e.foeHp/e.foeMax);e.bossLag=Math.max(e.bossLag,e.bossHp/e.bossMax);
-          e.foeHp=Math.max(0,e.foeHp-e.bossAtk);e.bossHp=Math.max(0,e.bossHp-Math.max(1,e.foeAtk-(e.bossDef||0)));
-          e.foeHurt=0.24;e.bossHurt=0.24;vib(12);beep(180,.04,'square',.035);
-          TOUR.result.hp=e.bossHp;
-          if(e.foeHp<=0||e.bossHp<=0){
-            e.resolved=true;
-            if(e.foeHp<=0){TOUR.result.soul+=20;TOUR.result.notoriety+=10;TOUR.result.exp+=20;TOUR.result.logs.push(`${e.ent.n} 격퇴 / Soul +20 / 악명 +10 / EXP +20`);showResultBanner('전투 승리', `Soul +20 / 악명 +10 / EXP +20`, 'win');e.phase=2;e.tOut=now;}
-            else {TOUR.result.hp=0;TOUR.result.logs.push(`${e.ent.n}와의 전투에서 ${TOUR.bossName||'순찰자'}이 기절했다.`);showResultBanner('기절', `${TOUR.bossName||'순찰자'} 강제 귀환`, 'fail');pushMsg(`${TOUR.bossName||'순찰자'}이 기절했다. 강제 귀환한다.`);TOUR.ending=true;setTimeout(()=>endTour(),1200);return;}
+          if((e.turn||'boss')==='boss'){
+            e.foeHp=Math.max(0,e.foeHp-e.bossAtk);
+            e.foeHurt=0.24;vib(12);beep(180,.04,'square',.035);
+            if(e.foeHp<=0){
+              e.resolved=true;
+              TOUR.result.soul+=20;TOUR.result.notoriety+=10;TOUR.result.exp+=20;
+              TOUR.result.logs.push(`${e.ent.n} 격퇴 / Soul +20 / 악명 +10 / EXP +20`);
+              showResultBanner('전투 승리', `Soul +20 / 악명 +10 / EXP +20`, 'win');
+              e.phase=2;e.tOut=now;
+              return;
+            }
+            e.turn='hero';e.turnWait=0.45;
+            return;
           }
+          e.bossHp=Math.max(0,e.bossHp-Math.max(1,e.foeAtk-(e.bossDef||0)));
+          e.bossHurt=0.24;TOUR.result.hp=e.bossHp;TOUR.bossHp=e.bossHp;vib(10);beep(120,.04,'square',.03);
+          if(e.bossHp<=0){
+            e.resolved=true;TOUR.result.hp=0;
+            TOUR.result.logs.push(`${e.ent.n}와의 전투에서 ${TOUR.bossName||'순찰자'}이 기절했다.`);
+            showResultBanner('기절', `${TOUR.bossName||'순찰자'} 강제 귀환`, 'fail');
+            pushMsg(`${TOUR.bossName||'순찰자'}이 기절했다. 강제 귀환한다.`);
+            TOUR.ending=true;setTimeout(()=>endTour(),1200);return;
+          }
+          e.turn='boss';e.turnWait=0.45;
         }
       }
     }
@@ -815,7 +877,7 @@ function tourOpenRecruitMethod(e){
 }
 function resolveTourRecruit(e,method){
   const great=Math.random()<0.12, success=great||Math.random()<(method==='soul'?0.7:0.55);
-  if(method==='force')TOUR.result.hp=Math.max(1,(TOUR.result.hp||90)-1);
+  if(method==='force'){TOUR.result.hp=Math.max(1,(TOUR.result.hp||90)-1);TOUR.bossHp=TOUR.result.hp;}
   else TOUR.result.soul-=1;
   TOUR.result.exp+=success?(great?14:8):3;
   if(success)TOUR.result.households+=great?2:1;
@@ -824,6 +886,33 @@ function resolveTourRecruit(e,method){
   showResultBanner(great?'영입 대성공!':success?'영입 성공':'영입 실패', e.ent.n, success?'ok':'fail');
   finishTourChoiceEncounter(e,`🤝 ${line}`);
 }
+
+function tourOpenBossChoice(e){
+  e.awaitingChoice=true;
+  tourChoice('필드보스 대면', `${e.ent.n}와 힘을 겨룬다.`, [
+    {label:'복종시킨다',kind:'red',fn:()=>resolveTourBossRecruit(e)},
+    {label:'지나간다',kind:'gray',fn:()=>{TOUR.result.logs.push(`${e.ent.n}을(를) 지나쳤다.`);finishTourChoiceEncounter(e,`🚶 ${e.ent.n}을(를) 지나쳤다`);}}
+  ]);
+}
+function resolveTourBossRecruit(e){
+  const bossPower=(TOUR.bossAtk||18)*3+(TOUR.bossMax||80)*0.45+(TOUR.bossDef||0)*2;
+  const targetPower=(e.ent.at||18)*3+(e.ent.hp||80)*0.45+(e.ent.df||0)*2;
+  const chance=Math.max(0.18,Math.min(0.82,0.45+(bossPower-targetPower)/180));
+  const success=Math.random()<chance;
+  TOUR.result.exp+=success?24:10;
+  if(success){
+    TOUR.result.bossRecruit={id:e.ent.id,name:e.ent.n};
+    TOUR.result.logs.push(`${e.ent.n} 힘겨루기 승리 / 필드보스 영입 / EXP +24`);
+    showResultBanner('복종 성공', `${e.ent.n} 영입`, 'win');
+    finishTourChoiceEncounter(e,`👑 ${e.ent.n}이(가) 복종했다`);
+  }else{
+    TOUR.result.hp=Math.max(1,(TOUR.result.hp||TOUR.bossHp||80)-8);TOUR.bossHp=TOUR.result.hp;
+    TOUR.result.logs.push(`${e.ent.n} 힘겨루기 실패 / HP -8 / EXP +10`);
+    showResultBanner('복종 실패', `HP -8 / EXP +10`, 'fail');
+    finishTourChoiceEncounter(e,`💥 ${e.ent.n}이(가) 버텼다`);
+  }
+}
+
 function tourOpenHeroChoice(e){
   e.awaitingChoice=true;
   tourChoice('용사 출현', `${e.ent.n}가 모습을 드러냈다.`, [
@@ -889,13 +978,14 @@ function startTour(){
   const tourBossMaxHp = Math.max(1, Number(params.get('maxHp')) || tourBossHp || 90);
   const tourBossAtk = Math.max(1, Number(params.get('atk')) || 18);
   const tourBossDef = Math.max(0, Number(params.get('def')) || 0);
+  const tourMaxSteps = Math.max(1, Number(params.get('maxSteps')) || 32);
   const prof=nextDungeon(forcedDungeon);          // 보드에서 선택한 순찰 구역 기준
   let ok=false;
   for(let a=0;a<4&&!ok;a++){genMapSync();ok=!!startPos;}
   if(!ok)return;
   px=startPos.x;py=startPos.y;ang=startAng;
   bobPhase=0;bobAmt=0;lastStepPh=0;walkCount=0;lastWalkCell=`${px|0},${py|0}`;msgQueue=[];hideJoy();keys.clear();
-  TOUR={path:[],enc:null,ev:null,count:0,bossName:tourBossName,bossHp:tourBossHp,bossMax:tourBossMaxHp,bossAtk:tourBossAtk,bossDef:tourBossDef,nextEncAt:performance.now()+tourDelay(2800+RND(0,2600)),result:{soul:0,notoriety:0,households:0,hp:tourBossHp,steps:0,exp:0,logs:[]}};
+  TOUR={path:[],enc:null,ev:null,count:0,maxSteps:tourMaxSteps,bossName:tourBossName,bossHp:tourBossHp,bossMax:tourBossMaxHp,bossAtk:tourBossAtk,bossDef:tourBossDef,nextEncAt:performance.now()+tourDelay(2800+RND(0,2600)),result:{soul:0,notoriety:0,households:0,hp:tourBossHp,steps:0,exp:0,logs:[]}};
   tourPlan();
   gameState='tour';
   document.exitPointerLock?.();
@@ -1052,10 +1142,9 @@ function drawEncNameTag(e, dirX, dirY, plX, plY, hz) {
   });
   const c=document.getElementById('evClose');
   if(c)c.addEventListener('click',()=>{if(gameState==='tour'&&TOUR)tourCloseEvent();});
-  [1,2,4].forEach(v=>{
-    const el=document.getElementById('tourSpd'+v);
-    if(el)el.addEventListener('click',()=>setTourSpeed(v));
-  });
+  const spd=document.getElementById('tourSpeedToggle');
+  if(spd)spd.addEventListener('click',cycleTourSpeed);
+  setTourSpeed(1);
 })();
 cv.addEventListener('pointerdown',()=>{
   if(gameState==='tour'&&TOUR&&TOUR.enc&&!TOUR.enc.awaitingChoice)tourFinishEncounter(performance.now());
@@ -1270,6 +1359,15 @@ function updateDomHud(){
   log.classList.toggle('hidden',!show);
   if(!show)return;
   const el=clearTime||playTime;
+  const hpNow=TOUR?.result?.hp ?? TOUR?.bossHp ?? null;
+  const hpMax=TOUR?.bossMax ?? null;
+  const bossEl=hud.querySelector('.boss');
+  const hpEl=hud.querySelector('.hp');
+  if(gameState==='tour'&&TOUR){
+    bossEl.style.display='block';hpEl.style.display='block';
+    bossEl.textContent=TOUR.bossName||'하수인';
+    hpEl.textContent=`HP ${hpNow}/${hpMax}`;
+  }else{bossEl.style.display='none';hpEl.style.display='none';}
   hud.querySelector('.gem').textContent=`💎 ${gotCount}`;
   hud.querySelector('.time')
      .textContent=`${curProfile?curProfile.icon:'🧱'} 걸음 ${walkCount}`;
@@ -1947,14 +2045,7 @@ function update(dt,now){
     pushMsg('🌊 지하호수… 검은 수면이 반짝인다');
     sndLap();
   }
-  for(const gm of gems){
-    if(gm.got)continue;
-    if((px-gm.x)**2+(py-gm.y)**2<0.42*0.42){
-      gm.got=true;gotCount++;sndPickup();vib(20);
-      pushMsg(`💎 보석 획득! (${gotCount}/${GEM_TOTAL})`);
-      if(gotCount===GEM_TOTAL){pushMsg('✨ 포털이 활성화되었다!');sndWin();vib([30,40,30]);}
-    }
-  }
+  collectNearbyGems();
   const pdist=Math.hypot(px-portal.x,py-portal.y);
   if(pdist<0.8){
     if(gotCount>=GEM_TOTAL){
@@ -2073,11 +2164,11 @@ function render(now){
     const rx=x-px,ry=y-py;
     const trX=invDet*(dirY*rx-dirX*ry);
     const trY=invDet*(-plY*rx+plX*ry);
-    if(trY>0.1)list.push({trX,trY,tex,z:opts.z||0,hW:opts.hW||0.8,
+    if(trY>0.1)list.push({trX,trY,tex,z:opts.z||0,hW:opts.hW||0.8,layer:opts.layer||0,
       glow:!!opts.glow,flip:!!opts.flip,front:!!opts.front});
   }
   for(const gm of gems)if(!gm.got)
-    addSpr(gm.x,gm.y,sprGem,{z:0.24+0.06*Math.sin(t*3+gm.phase),hW:0.36,glow:true});
+    addSpr(gm.x,gm.y,sprGem,{z:0.24+0.06*Math.sin(t*3+gm.phase),hW:0.32,glow:false,layer:-1});
   const portHW=dmode==='cave'?0.56:0.95;
   addSpr(portal.x,portal.y,((now/300)|0)%2?sprPortalB:sprPortalA,
     {z:0,hW:portHW+0.03*Math.sin(t*2.4),glow:true});
@@ -2096,9 +2187,9 @@ function render(now){
     else if(e.phase===2)k=1-(performance.now()-e.tOut)/TOUR_LEAVE;
     k=clampN(k,0.02,1);
     addSpr(e.x,e.y,e.tex[e.frame],
-      {z:0,hW:e.baseHW*k*(1+0.035*Math.sin(t*0.006)),glow:true,front:true});
+      {z:0,hW:e.baseHW*k*(1+0.035*Math.sin(t*0.006)),glow:false,front:true,layer:2});
   }
-  list.sort((a,b)=>b.trY-a.trY);
+  list.sort((a,b)=>(a.layer-b.layer)||(b.trY-a.trY));
   for(const s of list){
     const scrX=(IW/2)*(1+s.trX/s.trY);
     const pixH=s.hW*IH/s.trY;

@@ -52,7 +52,7 @@ function preload() {
   this.load.image("pdChest", "2D Pixel Dungeon Asset Pack/items and trap_animation/chest/chest_1.png");
   this.load.image("pdTorch", "2D Pixel Dungeon Asset Pack/items and trap_animation/torch/torch_1.png");
   this.load.image("pdPeaks", "2D Pixel Dungeon Asset Pack/items and trap_animation/peaks/peaks_1.png");
-  this.load.image("dungeonInterior", "던전내부.png");
+  this.load.image("dungeonInterior", "assets/dungeon-interior.png");
 }
 
 function create() {
@@ -1056,7 +1056,9 @@ function makeBoardAreas() {
     name: d.name,
     desc: d.desc,
     diff: d.rec,
-    req: i < 2 ? 0 : i * 70,
+    req: i === 0 ? 0 : i === 1 ? 42 : i * 70,
+    unlockCost: i === 0 ? 0 : i === 1 ? 80 : 120 + i * 60,
+    unlocked: i === 0,
     progress: 0,
     max: 4,
     done: false,
@@ -1094,7 +1096,7 @@ function ensureDustTexture(scene, frame) {
 function spawnDungeonDust(scene, x, y, a = null, b = null) {
   const fx = { x, y, t: 0, frame: 0, a, b, resolved: false, actor: null };
   if (scene.boardUi) {
-    fx.actor = scene.add.image(x, y, ensureDustTexture(scene, 0)).setDepth(66).setScale(2.0).setAlpha(0.95);
+    fx.actor = scene.add.image(x, y, ensureDustTexture(scene, 0)).setDepth(64).setScale(2.0).setAlpha(scene.board.helpTab ? 0 : 0.95);
     scene.boardUi.add(fx.actor);
   }
   scene.board.dustEffects.push(fx);
@@ -1410,7 +1412,7 @@ function updateBoard(scene, dt) {
       fx.x = ((fx.a?.x || fx.x) + (fx.b?.x || fx.x)) / 2;
       fx.y = ((fx.a?.y || fx.y) + (fx.b?.y || fx.y)) / 2;
       fx.actor.setPosition(fx.x, fx.y).setTexture(ensureDustTexture(scene, frame));
-      fx.actor.setAlpha(fx.t > 3.65 ? Math.max(0, 1 - (fx.t - 3.65) / 0.35) : 0.95);
+      fx.actor.setAlpha(scene.board.helpTab ? 0 : (fx.t > 3.65 ? Math.max(0, 1 - (fx.t - 3.65) / 0.35) : 0.95));
       fx.actor.setScale(2.1 + 0.25 * Math.sin(fx.t * 12));
     }
     if (fx.t >= 4.0) resolveDungeonDust(scene, fx);
@@ -1596,7 +1598,7 @@ function renderDungeon(scene, c) {
   const d = scene.board.dungeon;
   addText(scene, c, 24, 80, d.name, 28, UI_THEME.ink);
   addHelpButton(scene, c, "dungeon");
-  addText(scene, c, 24, 122, `${d.area}평   ${d.floor}   세대수 ${d.households}/${d.capacity}   필드보스 ${d.bosses}`, 17, "#c9c2b8");
+  addText(scene, c, 24, 122, `${d.area}평   ${d.floor}   세대수 ${d.households}/${d.capacity}   하수인 ${d.bosses}`, 17, "#c9c2b8");
 
   addRect(scene, c, 24, 158, 492, 548, 0x050706, 1, 0x263129);
   const src = scene.textures.get("dungeonInterior").getSourceImage();
@@ -1610,10 +1612,6 @@ function renderDungeon(scene, c) {
   bg.setMask(maskShape.createGeometryMask());
   c.add([bg, maskShape]);
   addRect(scene, c, 36, 170, 468, 524, 0x000000, 0.24);
-  const bnd = DUNGEON_ACTOR_BOUNDS;
-  addRect(scene, c, bnd.x1, bnd.y1, bnd.x2 - bnd.x1, bnd.y2 - bnd.y1, 0xff0000, 0.08, 0xff3333);
-  addText(scene, c, 48, 666, "던전 내부", 16, "#8bd17c");
-
   addRect(scene, c, 24, 716, 492, 82, 0x090d0d, 0.9, 0x263129);
   addText(scene, c, 42, 730, "던전 관찰 로그", 14, "#8bd17c");
   (scene.board.dungeonFeed || []).slice(0, 3).forEach((line, i) => {
@@ -1643,7 +1641,7 @@ function renderDungeon(scene, c) {
   });
   for (const fx of scene.board.dustEffects || []) {
     fx.actor?.destroy();
-    fx.actor = scene.add.image(fx.x, fx.y, ensureDustTexture(scene, fx.frame || 0)).setDepth(66).setScale(1.8).setAlpha(0.9);
+    fx.actor = scene.add.image(fx.x, fx.y, ensureDustTexture(scene, fx.frame || 0)).setDepth(64).setScale(1.8).setAlpha(scene.board.helpTab ? 0 : 0.9);
     c.add(fx.actor);
   }
 
@@ -1656,23 +1654,29 @@ function renderExplore(scene, c) {
   const areas = scene.board.areas.slice(page * 4, page * 4 + 4);
   areas.forEach((a, i) => {
     const y = 125 + i * 116;
-    const locked = scene.board.dungeon.notoriety < a.req;
+    const reputationLocked = scene.board.dungeon.notoriety < a.req;
+    const needsOpen = !reputationLocked && !a.unlocked;
+    const locked = reputationLocked || needsOpen;
     addRect(scene, c, 24, y, 492, 92, locked ? 0x0b0d0d : 0x101513, 1, locked ? 0x333333 : 0x314832);
     addText(scene, c, 42, y + 14, `${a.dungeonNo}. ${a.name}`, 17, locked ? "#777" : "#f4f1e8");
-    addText(scene, c, 42, y + 41, locked ? `악명 ${a.req} 필요` : `권장 ${a.diff}`, 14, locked ? "#c55" : "#8bd17c");
+    const status = reputationLocked ? `악명 ${a.req} 필요` : needsOpen ? `악명 도달 · Soul ${a.unlockCost} 소모` : `권장 ${a.diff}`;
+    addText(scene, c, 42, y + 41, status, 14, reputationLocked ? "#c55" : needsOpen ? "#f0c45c" : "#8bd17c");
     addText(scene, c, 42, y + 63, a.desc || "", 12, locked ? "#666" : "#aab0aa");
-    if (!locked) {
+    if (needsOpen) {
+      addButton(scene, c, 380, y + 22, 94, 42, "개방", () => unlockPatrolArea(scene, page * 4 + i), scene.board.dungeon.soul >= a.unlockCost ? "growth" : "disabled");
+    } else if (!locked) {
       const patrolBoss = getPatrolBoss(scene);
       addButton(scene, c, 380, y + 22, 94, 42, patrolBoss.ap > 0 ? "순찰 시작" : "AP 없음", () => startExploreRun(scene, page * 4 + i), patrolBoss.ap > 0 ? "explore" : "disabled");
     }
   });
-  addButton(scene, c, 48, 620, 120, 48, "이전", () => { scene.board.patrolPage = Math.max(0, page - 1); renderBoard(scene); }, page > 0 ? "default" : "disabled");
-  addText(scene, c, 230, 633, `${page + 1}/${Math.ceil(scene.board.areas.length / 4)}`, 16, "#c9c2b8");
-  addButton(scene, c, 372, 620, 120, 48, "다음", () => { scene.board.patrolPage = Math.min(Math.ceil(scene.board.areas.length / 4) - 1, page + 1); renderBoard(scene); }, page < Math.ceil(scene.board.areas.length / 4) - 1 ? "default" : "disabled");
+  addPager(scene, c, 620, page, Math.ceil(scene.board.areas.length / 4), (next) => {
+    scene.board.patrolPage = next;
+    renderBoard(scene);
+  });
 }
 
 function renderBosses(scene, c) {
-  addText(scene, c, 24, 76, "보유 필드보스", 26, UI_THEME.ink);
+  addText(scene, c, 24, 76, "하수인", 26, UI_THEME.ink);
   addHelpButton(scene, c, "boss");
   const owned = scene.board.bosses.filter((boss) => boss.recruited);
   owned.forEach((boss, i) => {
@@ -1685,7 +1689,7 @@ function renderBosses(scene, c) {
     addText(scene, c, 386, y + 16, `${boss.grade}급`, 15, "#f0c45c");
     addText(scene, c, 386, y + 42, boss.status, 13, "#aab0aa");
   });
-  if (!owned.length) addPanel(scene, c, 24, 150, 492, 110, ["보유 필드보스 없음"]);
+  if (!owned.length) addPanel(scene, c, 24, 150, 492, 110, ["보유 하수인 없음"]);
 }
 
 function renderSettings(scene, c) {
@@ -1698,6 +1702,19 @@ function renderSettings(scene, c) {
   addButton(scene, c, 294, 338, 190, 58, scene.state.fullscreenOn ? "화면 축소" : "전체화면", () => { toggleFullscreen(scene); setTimeout(() => renderBoard(scene), 140); }, "primary");
   addButton(scene, c, 54, 428, 430, 58, "데모 데이터 초기화", () => showStartResetConfirm(scene), "danger");
   addText(scene, c, 48, 566, "데모용 기능입니다. 초기화하면 인트로 표시 여부도 초기화됩니다.", 13, UI_THEME.muted);
+}
+
+
+function unlockPatrolArea(scene, idx) {
+  const area = scene.board.areas[idx];
+  const d = scene.board.dungeon;
+  if (!area || area.unlocked) return renderBoard(scene);
+  if (d.notoriety < area.req) { scene.board.logs.unshift(`악명 ${area.req}이 필요하다.`); return renderBoard(scene); }
+  if (d.soul < area.unlockCost) { scene.board.logs.unshift(`Soul ${area.unlockCost}이 필요하다.`); return renderBoard(scene); }
+  d.soul -= area.unlockCost;
+  area.unlocked = true;
+  scene.board.logs.unshift(`${area.name} 순찰구역을 개방했다. Soul -${area.unlockCost}`);
+  renderBoard(scene);
 }
 
 function renderHeroChoice(scene, c) {
@@ -1798,7 +1815,10 @@ function finishPatrolSteps(scene) {
   const run = scene.board.exploreRun;
   if (!run) return;
   run.steps = result?.steps ?? run.maxSteps;
-  run.shown.push(run.hp <= 0 ? `${run.boss.name}이 기절해 귀환했다.` : `${run.steps}걸음 지점에서 순찰을 마치고 귀환한다.`);
+  const lastLine = run.shown[run.shown.length - 1] || "";
+  if (!/(귀환|도달|기절)/.test(lastLine)) {
+    run.shown.push(run.hp <= 0 ? `${run.boss.name}이 기절해 귀환했다.` : `${run.steps}걸음 지점에서 순찰을 마치고 귀환한다.`);
+  }
   run.finished = true;
   run.timer = 0;
 }
@@ -1835,12 +1855,10 @@ function renderDex(scene, c) {
   addText(scene, c, 24, 76, "몬스터 · 보스 도감", 25, UI_THEME.ink);
   addHelpButton(scene, c, "record");
   addText(scene, c, 28, 112, `${dungeon.no}. ${dungeon.name}`, 16, dungeon.hue || "#8bd17c");
-  addButton(scene, c, 32, 145, 94, 40, "이전", () => { scene.board.dexDungeon = Math.max(1, dungeonNo - 1); renderBoard(scene); }, dungeonNo > 1 ? "default" : "disabled");
-  addButton(scene, c, 142, 145, 94, 40, "다음", () => { scene.board.dexDungeon = Math.min(data.dungeons.length, dungeonNo + 1); renderBoard(scene); }, dungeonNo < data.dungeons.length ? "default" : "disabled");
-  addText(scene, c, 258, 154, `권장 ${dungeon.rec}`, 14, "#c9c2b8");
+  addText(scene, c, 390, 116, `권장 ${dungeon.rec}`, 14, "#c9c2b8");
   const list = data.monsters.filter((m) => m.d === dungeonNo).sort((a, b) => (a.dep === "BOSS" ? 1 : 0) - (b.dep === "BOSS" ? 1 : 0) || a.lv - b.lv);
   list.forEach((m, i) => {
-    const y = 205 + i * 71;
+    const y = 150 + i * 68;
     const isBoss = m.dep === "BOSS";
     addRect(scene, c, 24, y, 492, 60, isBoss ? 0x241d15 : 0x101513, 1, isBoss ? 0xf0c45c : 0x314832);
     addRect(scene, c, 36, y + 9, 42, 42, 0x070909, 1, 0x26362b);
@@ -1849,6 +1867,10 @@ function renderDex(scene, c) {
     addText(scene, c, 92, y + 8, discovered ? `${m.n}${isBoss ? "  FIELD BOSS" : ""}` : "???", 15, isBoss ? "#ffd76a" : "#f4f1e8");
     addText(scene, c, 92, y + 30, discovered ? `${m.dep} · ${m.el} · ${"★".repeat(m.r)} · Lv.${m.lv}` : "미발견", 12, "#c9c2b8");
     addText(scene, c, 305, y + 30, discovered ? `HP ${m.hp} 공 ${m.at} 방 ${m.df} 민 ${m.sd}` : "순찰 중 만나면 기록", 11, discovered ? "#8bd17c" : "#777");
+  });
+  addPager(scene, c, 690, dungeonNo - 1, data.dungeons.length, (next) => {
+    scene.board.dexDungeon = next + 1;
+    renderBoard(scene);
   });
 }
 
@@ -1862,10 +1884,10 @@ function addHelpButton(scene, c, tab) {
 
 function helpLines(tab) {
   return {
-    dungeon: ["던전", "현재 던전 상태와 입주 세력을 확인합니다.", "몬스터와 침입자가 만나면 자동으로 충돌합니다.", "보스는 별표로 표시되며 전투에서 패배하지 않습니다."],
-    explore: ["순찰", "필드보스를 순찰에 보내 자원과 몬스터를 확보하세요.", "몬스터마다 보이지 않는 성향이 있어 영입 확률이 달라집니다.", "영입 시도에는 실패, 성공, 대성공 결과가 존재합니다."],
-    boss: ["보스", "보유한 필드보스의 성장 상태를 확인합니다.", "순찰을 반복하면 경험치가 쌓입니다.", "행동력은 시간이 지나면 다시 충전됩니다."],
-    record: ["도감", "발견한 몬스터와 필드보스를 기록합니다.", "미발견 대상은 나중에 검은 실루엣으로 처리할 예정입니다.", "현재 데모는 전체 확인을 위해 일부 정보를 열어둡니다."],
+    dungeon: ["던전", "현재 던전 상태와 입주 세력을 확인합니다.", "몬스터와 침입자가 만나면 자동으로 충돌합니다.", "하수인은 별표로 표시됩니다."],
+    explore: ["순찰", "하수인을 순찰에 보내 자원과 몬스터를 확보하세요.", "몬스터마다 보이지 않는 성향이 있어 영입 확률이 달라집니다.", "영입 시도에는 실패, 성공, 대성공 결과가 존재합니다."],
+    boss: ["하수인", "보유한 하수인의 성장 상태를 확인합니다.", "순찰을 반복하면 경험치가 쌓입니다.", "행동력은 시간이 지나면 다시 충전됩니다."],
+    record: ["도감", "던전에서 발견했거나 영입 가능한 존재를 확인합니다.", "몬스터와 하수인 후보의 기본 능력치를 비교할 수 있습니다.", "나중에는 미발견 대상이 검은 실루엣으로 표시됩니다."],
     settings: ["설정", "소리와 전체화면 상태를 바꿉니다.", "데모 데이터 초기화로 처음 상태를 다시 확인할 수 있습니다.", "보드 화면의 시스템 조작은 이곳에 모았습니다."],
   }[tab] || ["도움말", "현재 화면의 기능을 안내합니다."];
 }
@@ -1883,7 +1905,7 @@ function renderHelpModal(scene, c, tab) {
 }
 
 function renderTabs(scene, c) {
-  [["던전","dungeon"],["보스","boss"],["순찰","explore"],["도감","record"],["설정","settings"]].forEach(([label, tab], i) => {
+  [["던전","dungeon"],["하수인","boss"],["순찰","explore"],["도감","record"],["설정","settings"]].forEach(([label, tab], i) => {
     addButton(scene, c, 14 + i * 103, H - 86, 94, 58, label, () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab ? "tabActive" : "tab");
   });
 }
@@ -1899,7 +1921,7 @@ function addBossExp(scene, boss, amount) {
     boss.exp -= boss.nextExp;
     boss.lv += 1;
     boss.maxHp += 10;
-    boss.hp = boss.maxHp;
+    boss.hp = Math.min(boss.hp, boss.maxHp);
     boss.atk += 2;
     boss.def += 1;
     boss.spd += 1;
@@ -2014,6 +2036,7 @@ function applyPatrolEvent(scene, event) {
 
 function startExploreRun(scene, idx) {
   const area = scene.board.areas[idx];
+  if (!area || !area.unlocked || scene.board.dungeon.notoriety < area.req) return renderBoard(scene);
   const boss = getPatrolBoss(scene);
   if (!boss || boss.ap <= 0) { scene.board.logs.unshift("순찰 가능한 행동력이 부족하다."); return renderBoard(scene); }
   boss.ap -= 1;
@@ -2036,8 +2059,8 @@ function renderExploreRun(scene, c) {
   addRect(scene, c, 32, 146, 216, 96, 0x101513, 1, 0x314832);
   addCodexSprite(scene, c, run.boss.codexId, 78, 194, 2.2);
   addText(scene, c, 122, 164, run.boss.name, 17, "#ffd76a");
-  addText(scene, c, 122, 186, `걸음 ${run.steps || 0}/${run.maxSteps || 0}`, 12, "#aab0aa");
-  addMiniHp(scene, c, 122, 213, 92, run.hp, run.maxHp);
+  if (!run.finished) addText(scene, c, 122, 186, `걸음 ${run.steps || 0}/${run.maxSteps || 0}`, 12, "#aab0aa");
+  addMiniHp(scene, c, 122, run.finished ? 202 : 213, 92, run.hp, run.maxHp);
 
   const current = run.nodes[Math.min(run.event, run.nodes.length - 1)];
   if (!run.finished && current?.entityId) {
@@ -2047,7 +2070,8 @@ function renderExploreRun(scene, c) {
     addText(scene, c, 376, 190, current.entityName || "", 12, "#c9c2b8");
   }
 
-  addLogPanel(scene, c, 32, 270, 476, run.finished ? 250 : 350, typedPatrolLines(scene, run.shown).slice(-9));
+  const logLines = run.finished ? run.shown : typedPatrolLines(scene, run.shown);
+  addLogPanel(scene, c, 32, 270, 476, run.finished ? 250 : 350, logLines.slice(-9));
   if (run.finished) {
     addLogPanel(scene, c, 32, 545, 476, 115, patrolSummary(run));
     addButton(scene, c, 150, 690, 240, 66, "귀환", () => finishPatrol(scene), "explore");
@@ -2069,7 +2093,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826s", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0 });
+  const qs = new URLSearchParams({ v: "20260826al", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
@@ -2116,20 +2140,37 @@ function completeComppTour(scene, result = null) {
   if (!run || run.finished) return closeComppTour(true);
   const d = scene.board.dungeon;
   if (result) {
-    d.soul = Math.max(0, d.soul + (result.soul || 0));
-    d.notoriety += result.notoriety || 0;
+    const soulGain = Number(result.soul || 0);
+    const notorietyGain = Number(result.notoriety || 0);
+    d.soul = Math.max(0, d.soul + soulGain);
+    d.notoriety += notorietyGain;
     d.households = Math.min(d.capacity, d.households + (result.households || 0));
     run.hp = result.hp ?? run.hp;
     if (result.steps !== undefined) run.steps = result.steps;
-    run.rewards.soul += result.soul || 0;
-    run.rewards.notoriety += result.notoriety || 0;
+    run.rewards.soul += soulGain;
+    run.rewards.notoriety += notorietyGain;
     run.rewards.monsters += result.households || 0;
     run.rewards.exp += result.exp || 0;
     if (result.exp) addBossExp(scene, run.boss, result.exp);
+    run.maxHp = run.boss.maxHp;
+    run.hp = Math.min(run.maxHp, Math.max(0, run.hp));
+    if (result.bossRecruit?.id) {
+      const target = scene.board.bosses.find((boss) => boss.codexId === result.bossRecruit.id);
+      if (target && !target.recruited) {
+        target.recruited = true;
+        target.status = '상주';
+        target.ap = target.maxAp || 3;
+        scene.board.dungeon.bosses += 1;
+        scene.board.ownedMonsterIds?.add?.(target.codexId);
+      }
+    }
     for (const line of result.logs || []) run.shown.push(line);
   }
   run.steps = result?.steps ?? run.maxSteps;
-  run.shown.push(run.hp <= 0 ? `${run.boss.name}이 기절해 귀환했다.` : `${run.steps}걸음 지점에서 순찰을 마치고 귀환한다.`);
+  const lastLine = run.shown[run.shown.length - 1] || "";
+  if (!/(귀환|도달|기절)/.test(lastLine)) {
+    run.shown.push(run.hp <= 0 ? `${run.boss.name}이 기절해 귀환했다.` : `${run.steps}걸음 지점에서 순찰을 마치고 귀환한다.`);
+  }
   run.finished = true;
   scene.board.step = "exploreRun";
   closeComppTour(false);
@@ -2253,7 +2294,7 @@ function patrolSummary(run) {
 
 function finishPatrol(scene) {
   const run = scene.board.exploreRun;
-  if (run?.boss) { run.boss.hp = run.hp; run.boss.status = "대기"; }
+  if (run?.boss) { run.boss.hp = Math.min(run.boss.maxHp, Math.max(0, run.hp)); run.boss.status = "대기"; }
   scene.board.step = "main";
   scene.board.tab = "explore";
   scene.board.exploreRun = null;
@@ -2374,6 +2415,15 @@ function addRexButton(scene, x, y, w, h, label, fn) {
   }).setDepth(43).layout().setInteractive({ useHandCursor: true });
   button.on("pointerdown", fn);
   return button;
+}
+
+function addPager(scene, c, y, page, total, setPage) {
+  const max = Math.max(1, total || 1);
+  const current = Phaser.Math.Clamp(page || 0, 0, max - 1);
+  addButton(scene, c, 48, y, 120, 48, "이전", () => setPage(Math.max(0, current - 1)), current > 0 ? "default" : "disabled");
+  addRect(scene, c, 208, y, 124, 48, 0x0d1110, 1, 0x32382f);
+  addText(scene, c, 270, y + 24, `${current + 1}/${max}`, 16, "#c9c2b8").setOrigin(0.5);
+  addButton(scene, c, 372, y, 120, 48, "다음", () => setPage(Math.min(max - 1, current + 1)), current < max - 1 ? "default" : "disabled");
 }
 
 function addText(scene, c, x, y, value, size, color = "#f4f1e8", depth = 61) {

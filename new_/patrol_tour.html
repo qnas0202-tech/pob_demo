@@ -105,7 +105,7 @@
     font-weight:bold;padding:0;line-height:1;border:2px solid #3d4a63;touch-action:manipulation;}
 
   /* ── 🚶 만남 투어 ── */
-  #tourBar{position:fixed;left:50%;transform:translateX(-50%);
+  #tourBar{position:fixed;right:calc(10px + env(safe-area-inset-right));
     bottom:calc(10px + env(safe-area-inset-bottom));z-index:9;display:flex;gap:8px;}
   #evOv{position:fixed;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;
     background:rgba(0,0,0,.6);
@@ -140,10 +140,12 @@
     min-width:116px;padding:7px 9px;border:1px solid rgba(126,243,255,.45);border-radius:8px;
     background:rgba(5,6,10,.78);color:#fff;text-align:left;pointer-events:none;
     font-family:ui-monospace,Menlo,Consolas,monospace;text-shadow:0 1px 0 #000,0 0 4px #000;}
-  #domHud .gem{font-size:18px;font-weight:900;color:#7ef3ff;line-height:1.1;}
+  #domHud .boss{font-size:13px;font-weight:900;color:#ffd76a;line-height:1.1;}
+  #domHud .hp{font-size:13px;font-weight:900;color:#7dff8a;margin-top:3px;}
+  #domHud .gem{font-size:16px;font-weight:900;color:#7ef3ff;line-height:1.1;margin-top:3px;}
   #domHud .time{font-size:13px;font-weight:800;color:#fff;margin-top:3px;}
   #domHud .ai{font-size:12px;font-weight:800;color:#7ef3ff;margin-top:3px;}
-  #domLog{position:fixed;left:calc(8px + env(safe-area-inset-left));top:calc(74px + env(safe-area-inset-top));z-index:8;
+  #domLog{position:fixed;left:calc(8px + env(safe-area-inset-left));top:calc(112px + env(safe-area-inset-top));z-index:8;
     width:min(70vw,360px);display:flex;flex-direction:column;gap:4px;pointer-events:none;
     font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;}
   #domLog div{width:max-content;max-width:100%;padding:4px 7px;border-radius:6px;background:rgba(5,6,10,.76);
@@ -234,7 +236,7 @@
   <button type="button" id="aiBtn">🤖</button>
 </div>
 <button type="button" id="menuBtn" class="hidden">☰</button>
-<div id="domHud" class="hidden"><div class="gem"></div><div class="time"></div><div class="ai"></div></div>
+<div id="domHud" class="hidden"><div class="boss"></div><div class="hp"></div><div class="gem"></div><div class="time"></div><div class="ai"></div></div>
 <div id="domLog" class="hidden"></div>
 
 <div id="overlay">
@@ -311,9 +313,7 @@
 </div>
 
 <div id="tourBar" class="hidden">
-  <button class="dbar on" id="tourSpd1">x1</button>
-  <button class="dbar" id="tourSpd2">x2</button>
-  <button class="dbar" id="tourSpd4">x4</button>
+  <button class="dbar on" id="tourSpeedToggle">x1</button>
   <button class="dbar" id="tourExit">⏹ 투어 종료</button>
   <button class="dbar primary" id="tourSkip">⏭ 건너뛰기</button>
 </div>
@@ -356,6 +356,6 @@
 <script src="js/pixelcodex.js?v=20260826c"></script>
 <script src="js/engine-core.js"></script>
 <script src="js/worldgen.js"></script>
-<script src="js/patrol_tour.js?v=20260826s"></script>
+<script src="js/patrol_tour.js?v=20260826al"></script>
 </body>
 </html>
