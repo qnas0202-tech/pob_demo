@@ -188,10 +188,19 @@ function create() {
       renderBoard(this);
       return;
     }
-    if (this.board?.step === "chosen" && !this.board.chosenReady) {
-      this.board.chosenTimer = 99;
-      renderBoard(this);
-      return;
+    if (this.board?.step === "chosen") {
+      if (!this.board.chosenReady && (this.board.chosenTimer || 0) > 0.4) {
+        this.board.chosenTimer = 99;
+        renderBoard(this);
+        return;
+      }
+      if (this.board.chosenReady) {
+        const p = this.input.activePointer;
+        if (p.x >= 150 && p.x <= 390 && p.y >= 736 && p.y <= 826) {
+          enterDungeonAfterGuardian(this);
+          return;
+        }
+      }
     }
     if (this.board?.step === "exploreRun" && this.board.typewriter) {
       this.board.typewriter.chars = this.board.typewriter.full.length;
@@ -1046,6 +1055,12 @@ function makeBoardBosses() {
   return list.map((m) => makeBossState(m, false));
 }
 
+function enterDungeonAfterGuardian(scene) {
+  localStorage.setItem("pob_guardian_chosen", "1");
+  scene.board.step = "main";
+  renderBoard(scene);
+}
+
 function recruitInitialBoss(scene, boss) {
   const slime = scene.board.bosses.find((b) => /슬라임|slime/i.test(`${b.name} ${b.id}`)) || scene.board.bosses[0];
   scene.board.bosses.forEach((b) => { b.recruited = false; b.status = "미영입"; b.ap = 0; });
@@ -1639,11 +1654,7 @@ function renderChosenSlime(scene, c) {
   addCodexSprite(scene, c, slime.codexId, W / 2, 570, 4.0);
   addText(scene, c, W / 2 - 42, 654, slime.name, 34, "#8cff7a");
   addText(scene, c, 44, 710, "계약서는 정상 처리되었습니다.", 16, "#f0b24b");
-  addButton(scene, c, 150, 770, 240, 64, "던전 입주", () => {
-    localStorage.setItem("pob_guardian_chosen", "1");
-    scene.board.step = "main";
-    renderBoard(scene);
-  }, "growth");
+  addButton(scene, c, 150, 748, 240, 64, "던전 입주", () => enterDungeonAfterGuardian(scene), "growth", 95);
 }
 
 function renderDungeon(scene, c) {
@@ -2147,7 +2158,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826au", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
+  const qs = new URLSearchParams({ v: "20260826ax", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
