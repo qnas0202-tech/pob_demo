@@ -1055,8 +1055,26 @@ function makeBoardBosses() {
   return list.map((m) => makeBossState(m, false));
 }
 
+
+function ensureInitialGuardian(scene) {
+  const slime = scene.board?.bosses?.find((b) => /슬라임|slime/i.test(`${b.name} ${b.id}`)) || scene.board?.bosses?.[0];
+  if (!slime) return;
+  slime.recruited = true;
+  slime.status = slime.status === "순찰" ? "순찰" : "대기";
+  slime.lv = Math.max(1, slime.lv || 1);
+  slime.exp = slime.exp || 0;
+  slime.ap = Math.max(1, slime.ap || slime.maxAp || 3);
+  slime.maxHp = slime.maxHp || 80;
+  slime.hp = Phaser.Math.Clamp(slime.hp || slime.maxHp, 1, slime.maxHp);
+  scene.board.selectedBoss = slime.id;
+  scene.board.dungeon.bosses = Math.max(1, scene.board.dungeon.bosses || 0);
+  scene.board.ownedMonsterIds?.add?.(slime.codexId || slime.id);
+  scene.board.discoveredCodex?.add?.(slime.codexId || slime.id);
+}
+
 function enterDungeonAfterGuardian(scene) {
   localStorage.setItem("pob_guardian_chosen", "1");
+  ensureInitialGuardian(scene);
   scene.board.step = "main";
   renderBoard(scene);
 }
@@ -1374,6 +1392,7 @@ function startBoardMode(scene, tourVisual = false) {
     apTimer: 0,
     tourVisual,
   };
+  if (guardianChosen) ensureInitialGuardian(scene);
   renderBoard(scene);
 }
 
@@ -2110,7 +2129,6 @@ function startExploreRun(scene, idx) {
   scene.board.exploreRun = { idx, boss, event: 0, line: 0, timer: 0, steps: 0, maxSteps: nodes.maxSteps || 64, nodes, shown: [`${boss.name}이 ${area.name} 순찰을 시작했다.`], rewards: { soul: 0, notoriety: 0, monsters: 0, clues: 0, exp: 0, levelUps: 0 }, hp: boss.hp, maxHp: boss.maxHp, finished: false };
   scene.board.typewriter = { full: scene.board.exploreRun.shown.join("\n"), chars: 0 };
   scene.board.logs.unshift(`${boss.name}이 ${area.name} 순찰을 시작했다.`);
-  renderBoard(scene);
   openComppTour(scene);
 }
 
@@ -2158,7 +2176,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826ay", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826ba", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
