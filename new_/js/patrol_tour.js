@@ -1972,7 +1972,6 @@ function renderTopDown(now){
    ============================================================ */
 function mobileBoot(){
   if(isCoarse){
-    document.documentElement.requestFullscreen?.().catch(()=>{});
     reqWakeLock();
   }
 }

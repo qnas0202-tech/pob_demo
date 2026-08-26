@@ -188,6 +188,11 @@ function create() {
       renderBoard(this);
       return;
     }
+    if (this.board?.step === "chosen" && !this.board.chosenReady) {
+      this.board.chosenTimer = 99;
+      renderBoard(this);
+      return;
+    }
     if (this.board?.step === "exploreRun" && this.board.typewriter) {
       this.board.typewriter.chars = this.board.typewriter.full.length;
       renderBoard(this);
@@ -676,7 +681,7 @@ function renderKingScene(scene, run) {
 
 function clearDemoData(scene) {
   try {
-    ["pob_demo", "pob_state", "pob_save", "pob_board", "pob_intro_seen"].forEach((key) => {
+    ["pob_demo", "pob_state", "pob_save", "pob_board", "pob_intro_seen", "pob_guardian_chosen"].forEach((key) => {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     });
@@ -717,6 +722,7 @@ function startWalkSound(scene) {
 }
 
 function startGame(scene) {
+  requestMobileFullscreen(scene);
   scene.startButton.setText("시작하기");
   scene.startHit.setAlpha(0.92);
   if (scene.state.mode === "board") return startBoardMode(scene, false);
@@ -782,6 +788,12 @@ function toggleFullscreen(scene) {
     scene.state.fullscreenOn = !!document.fullscreenElement;
     drawUiIcons(scene);
   }, 120);
+}
+
+function requestMobileFullscreen(scene) {
+  if (!matchMedia("(pointer:coarse)").matches || document.fullscreenElement) return;
+  const el = scene.game.canvas.parentElement || scene.game.canvas;
+  el.requestFullscreen?.().catch?.(() => {});
 }
 
 const RAY_MAP = [
@@ -1048,6 +1060,8 @@ function recruitInitialBoss(scene, boss) {
   scene.board.dungeon.bosses = 1;
   scene.board.logs.unshift(`${boss.name} 소환 의식 결과, 슬라임이 입주했다.`);
   scene.board.step = "chosen";
+  scene.board.chosenTimer = 0;
+  scene.board.chosenReady = false;
   renderBoard(scene);
 }
 
@@ -1274,7 +1288,7 @@ function addCodexSprite(scene, c, id, x, y, scale = 2, opts = {}) {
 }
 
 function isCodexDiscovered(scene, id) {
-  return scene.board?.dexAllDiscovered !== false || scene.board?.discoveredCodex?.has?.(id);
+  return scene.board?.dexAllDiscovered === true || scene.board?.discoveredCodex?.has?.(id);
 }
 
 function codexPoolForArea(area, kind) {
@@ -1313,12 +1327,15 @@ function startBoardMode(scene, tourVisual = false) {
   scene.enemyHpLagBar.setVisible(false);
   scene.enemyHpBar.setVisible(false);
   const introSeen = localStorage.getItem("pob_intro_seen") === "1";
+  const guardianChosen = localStorage.getItem("pob_guardian_chosen") === "1";
   scene.board = {
-    step: introSeen ? "choose" : "intro",
+    step: guardianChosen ? "main" : introSeen ? "choose" : "intro",
     tab: "dungeon",
     selectedBoss: "slime",
     chosenName: "",
     introTimer: 0,
+    chosenTimer: 0,
+    chosenReady: false,
     dexDungeon: 1,
     dexView: "monster",
     dungeon: { name: "축축한 동굴", area: 18, floor: "B1F", households: 12, capacity: 20, bosses: 1, asset: 1250, notoriety: 42, soul: 320, gem: 125, stage: 0 },
@@ -1329,6 +1346,8 @@ function startBoardMode(scene, tourVisual = false) {
     invasion: false,
     powerUsed: false,
     ownedMonsterIds: new Set([1, 108]),
+    discoveredCodex: new Set([1, 108]),
+    dexAllDiscovered: false,
     dwellers: makeDungeonDwellers(12),
     dungeonActors: [],
     dustEffects: [],
@@ -1348,6 +1367,11 @@ function updateBoard(scene, dt) {
   if (!scene.board) return;
   if (scene.board.step === "intro") {
     scene.board.introTimer = (scene.board.introTimer || 0) + dt;
+    renderBoard(scene);
+    return;
+  }
+  if (scene.board.step === "chosen") {
+    scene.board.chosenTimer = (scene.board.chosenTimer || 0) + dt;
     renderBoard(scene);
     return;
   }
@@ -1567,7 +1591,7 @@ function renderIntro(scene, c) {
 }
 
 function renderChoose(scene, c) {
-  addText(scene, c, 28, 92, "최초의 필드보스를 선택하십시오", 24, UI_THEME.ink);
+  addText(scene, c, 28, 92, "최초의 하수인을 선택하십시오", 24, UI_THEME.ink);
   addText(scene, c, 32, 128, "던전의 첫 지배자를 소환합니다.", 15, UI_THEME.muted);
   const candidates = scene.board.bosses.filter((b) => b.name !== "슬라임").slice(0, 3);
   candidates.forEach((boss, i) => {
@@ -1578,18 +1602,45 @@ function renderChoose(scene, c) {
     addText(scene, c, 130, y + 62, "소환 후보", 14, UI_THEME.muted);
     addButton(scene, c, 390, y + 36, 92, 46, "선택", () => recruitInitialBoss(scene, boss), "growth");
   });
-  if (!candidates.length) addPanel(scene, c, 32, 180, 476, 120, ["사용 가능한 필드보스 데이터가 없습니다."]);
+  if (!candidates.length) addPanel(scene, c, 32, 180, 476, 120, ["사용 가능한 하수인 데이터가 없습니다."]);
 }
 
 function renderChosenSlime(scene, c) {
   const slime = scene.board.bosses.find((b) => b.recruited) || scene.board.bosses[0];
-  addText(scene, c, 32, 92, `${scene.board.chosenName} 소환 의식`, 26, "#f4f1e8");
-  addPanel(scene, c, 32, 148, 476, 118, ["던전 감정 결과", "연면적 18평 / B1F", "마력 수용량: 매우 낮음", "소환 안정성: 하급 권장"]);
-  addText(scene, c, 56, 324, "실제 입주 필드보스", 18, "#aab0aa");
-  addCodexSprite(scene, c, slime.codexId, W / 2, 420, 4.0);
-  addText(scene, c, W / 2 - 42, 504, slime.name, 34, "#8cff7a");
-  addText(scene, c, 44, 570, "계약서는 정상 처리되었습니다.", 16, "#f0b24b");
-  addButton(scene, c, 150, 650, 240, 72, "던전 입주", () => {
+  const lines = [
+    `${scene.board.chosenName} 소환 의식`,
+    "앗, 먼저 던전 감정이 필요합니다.",
+    "감정 결과에 따라 입주 가능한 하수인이 결정됩니다.",
+    "하수인이 결정되었습니다.",
+  ];
+  const elapsed = scene.board.chosenTimer || 0;
+  const charTime = 0.022;
+  const lineGap = 0.28;
+  let cursor = 0;
+  let complete = true;
+  addRect(scene, c, 28, 86, 484, 650, UI_THEME.panel, 1, UI_THEME.border);
+  lines.forEach((line, i) => {
+    const y = 104 + i * 44;
+    const len = line.length;
+    const start = cursor;
+    const end = start + len * charTime;
+    cursor = end + lineGap;
+    if (elapsed < start) { complete = false; return; }
+    const chars = Math.min(len, Math.floor((elapsed - start) / charTime));
+    if (chars < len) complete = false;
+    const textLine = line.slice(0, chars);
+    if (textLine) addText(scene, c, 44, y, textLine, i === 0 ? 25 : 17, i === 0 ? "#f4f1e8" : UI_THEME.ink);
+  });
+  scene.board.chosenReady = complete;
+  if (!complete) return;
+
+  addPanel(scene, c, 32, 302, 476, 118, ["던전 감정 결과", "연면적 18평 / B1F", "마력 수용량: 매우 낮음", "소환 안정성: 하급 권장"]);
+  addText(scene, c, 56, 478, "실제 입주 하수인", 18, "#aab0aa");
+  addCodexSprite(scene, c, slime.codexId, W / 2, 570, 4.0);
+  addText(scene, c, W / 2 - 42, 654, slime.name, 34, "#8cff7a");
+  addText(scene, c, 44, 710, "계약서는 정상 처리되었습니다.", 16, "#f0b24b");
+  addButton(scene, c, 150, 770, 240, 64, "던전 입주", () => {
+    localStorage.setItem("pob_guardian_chosen", "1");
     scene.board.step = "main";
     renderBoard(scene);
   }, "growth");
@@ -1959,6 +2010,7 @@ function rollMonsterRecruit(scene, event, methodKey = "force") {
     d.households = Math.min(d.capacity, d.households + (great ? 2 : 1));
     run.rewards.monsters += great ? 2 : 1;
     scene.board.ownedMonsterIds?.add?.(event.entityId);
+    scene.board.discoveredCodex?.add?.(event.entityId);
   }
   event.lines = [
     "떠돌이 몬스터를 만났다.",
@@ -2084,6 +2136,7 @@ function renderExploreRun(scene, c) {
 
 function openComppTour(scene) {
   closeComppTour(false);
+  scene.sfx?.bgm?.stop();
   const wrap = document.createElement("div");
   wrap.id = "boardTourOverlay";
   Object.assign(wrap.style, {
@@ -2094,7 +2147,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826ap", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
+  const qs = new URLSearchParams({ v: "20260826au", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
@@ -2147,6 +2200,7 @@ function completeComppTour(scene, result = null) {
         target.ap = target.maxAp || 3;
         scene.board.dungeon.bosses += 1;
         scene.board.ownedMonsterIds?.add?.(target.codexId);
+        scene.board.discoveredCodex?.add?.(target.codexId);
       }
     }
     for (const line of result.logs || []) run.shown.push(line);
