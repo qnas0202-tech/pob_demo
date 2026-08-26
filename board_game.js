@@ -223,6 +223,11 @@ function update(_, deltaMs) {
   const s = this.state;
   s.timer += dt;
   setRunHudVisible(this, s.phase !== "start" && s.phase !== "board");
+  if (s.phase === "start") {
+    this.corridor?.clear();
+    this.flash?.setAlpha(0);
+    return;
+  }
   if ((s.mode === "board" || s.mode === "boardTour") && s.phase === "board") return updateBoard(this, dt);
   if (s.mode === "kingcast" && s.phase === "walk") return updateKingMode(this, dt);
   drawCorridor(this);
@@ -2220,7 +2225,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826ca", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826cb", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
