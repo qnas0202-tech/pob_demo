@@ -2176,7 +2176,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826bd", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826be", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
