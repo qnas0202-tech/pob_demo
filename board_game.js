@@ -2094,7 +2094,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826ao", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
+  const qs = new URLSearchParams({ v: "20260826ap", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 32 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
@@ -2280,7 +2280,7 @@ function patrolSummary(run) {
 
 function finishPatrol(scene) {
   const run = scene.board.exploreRun;
-  if (run?.boss) { run.boss.hp = Math.min(run.boss.maxHp, Math.max(0, run.hp)); run.boss.status = "대기"; }
+  if (run?.boss) { run.boss.hp = run.boss.maxHp; run.boss.status = "대기"; }
   scene.board.step = "main";
   scene.board.tab = "explore";
   scene.board.exploreRun = null;
