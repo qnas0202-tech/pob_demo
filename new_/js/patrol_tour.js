@@ -680,8 +680,12 @@ function collectNearbyGems(){
 }
 
 function waitTourEnd(title, sub, kind){
-  if(!TOUR)return;
+  if(!TOUR||TOUR.awaitingEnd)return;
   TOUR.ending=true;TOUR.awaitingEnd=true;
+  TOUR.enc=null;
+  TOUR.ev=null;
+  TOUR.path=[];
+  TOUR.nextEncAt=Infinity;
   if(TOUR.result)TOUR.result.steps=walkCount;
   showResultBanner(title, sub, kind);
   pushMsg('하단의 결과 확인을 누르면 귀환합니다.');
@@ -788,6 +792,7 @@ function tourFinishEncounter(now){
   tourPlan();
 }
 function tourUpdate(dt,now){
+  if(TOUR?.ending)return;
   if(TOUR.ev)return;
   if(TOUR.enc){
     const e=TOUR.enc,t=(now-e.t0)*tourSpeed;
@@ -1010,7 +1015,7 @@ function endTour(){
   if(TOUR.result)TOUR.result.steps=walkCount;
   const embedded=parent&&parent!==window;
   try{ embedded && parent.postMessage({type:'pob-tour-complete',result:TOUR&&TOUR.result}, '*'); }catch(e){}
-  TOUR=null;setDrone(false);hideJoy();keys.clear();
+  resultBanner=null;TOUR=null;setDrone(false);hideJoy();keys.clear();
   const ov=document.getElementById('evOv');if(ov)ov.classList.add('hidden');
   gameState='title';
   if(!embedded)$('overlay').classList.remove('hidden');
@@ -1154,7 +1159,8 @@ function drawEncNameTag(e, dirX, dirY, plX, plY, hz) {
   if(spd)spd.addEventListener('click',cycleTourSpeed);
   setTourSpeed(1);
 })();
-cv.addEventListener('pointerdown',()=>{
+cv.addEventListener('pointerdown',e=>{
+  if(gameState==='tour'&&TOUR?.awaitingEnd&&resultBanner&&pointInResultBanner(e)){endTour();return;}
   if(gameState==='tour'&&TOUR&&TOUR.enc&&!TOUR.enc.awaitingChoice)tourFinishEncounter(performance.now());
 });
 
@@ -1300,6 +1306,7 @@ const sndTick=e=>{const n=performance.now();if(n-lastTick>85){lastTick=n;beep(26
 // 물방울 + 🌊 호수 물소리 (🚶 투어에서도 재생)
 let nextDrip=0,nextLap=0;
 function tryDrip(now){
+  if(TOUR?.awaitingEnd)return;
   if(dmode!=='cave'||!sndOn||!AC)return;
   if(gameState!=='play'&&gameState!=='demo'&&gameState!=='tour')return;
   if(now<nextDrip)return;
@@ -1314,6 +1321,7 @@ function sndLap(){
   beep(f,.13,'sine',.012,f*.6,.22);
 }
 function tryLap(now){
+  if(TOUR?.awaitingEnd)return;
   if(dmode!=='cave'||!sndOn||!AC||!waterG)return;
   if(gameState!=='play'&&gameState!=='demo'&&gameState!=='tour')return;
   if(now<nextLap)return;
@@ -2255,13 +2263,24 @@ function render(now){
   drawResultBanner(now);
 }
 
+function resultBannerBounds(){
+  const w=Math.min(IW-28,280),h=86,x=(IW-w)/2,y=IH*0.42-h/2;
+  return {x,y,w,h};
+}
+function pointInResultBanner(e){
+  const r=cv.getBoundingClientRect(),b=resultBannerBounds();
+  const x=(e.clientX-r.left)*IW/r.width,y=(e.clientY-r.top)*IH/r.height;
+  return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;
+}
 function drawResultBanner(now){
-  if(!resultBanner||now>resultBanner.until){resultBanner=null;return;}
+  if(!resultBanner)return;
+  const hold=TOUR?.awaitingEnd;
+  if(!hold&&now>resultBanner.until){resultBanner=null;return;}
   const age=now-resultBanner.t0;
   const left=resultBanner.until-now;
-  const a=Math.min(1,age/180,left/260);
+  const a=hold?Math.min(1,age/180):Math.min(1,age/180,left/260);
   const pop=1+0.08*Math.sin(Math.min(1,age/220)*Math.PI);
-  const w=Math.min(IW-28,280),h=86,x=(IW-w)/2,y=IH*0.42-h/2;
+  const {x,y,w,h}=resultBannerBounds();
   const colors={ok:['rgba(18,50,26,','#9cff8a'],win:['rgba(60,44,12,','#ffd76a'],fail:['rgba(70,20,18,','#ff9b8a']};
   const c=colors[resultBanner.kind]||colors.ok;
   ctx.save();ctx.globalAlpha=a;ctx.translate(IW/2,y+h/2);ctx.scale(pop,pop);ctx.translate(-IW/2,-y-h/2);
@@ -2344,8 +2363,10 @@ function loop(now){
   }else if(gameState==='demoEnd'){
     renderTopDown(now);
   }else if(gameState==='tour'){
-    tryDrip(now);tryLap(now);
-    tourUpdate(dt,now);
+    if(!TOUR?.awaitingEnd){
+      tryDrip(now);tryLap(now);
+      tourUpdate(dt,now);
+    }
     render(now);
   }else{
     if(gameState==='play'){

@@ -140,7 +140,7 @@ function create() {
   this.fullscreenToggle = this.add.image(W - 46, 86, "fullscreenEnterIcon").setDisplaySize(44, 44).setDepth(31).setInteractive({ useHandCursor: true });
   this.soundToggle.on("pointerdown", () => toggleSound(this));
   this.fullscreenToggle.on("pointerdown", () => toggleFullscreen(this));
-  this.startPanel = this.add.rectangle(W / 2, H / 2, W, H, 0x050606, 0.86).setDepth(40);
+  this.startPanel = this.add.rectangle(W / 2, H / 2, W, H, 0x050606, 1).setDepth(40);
   this.startDecor = [
     this.add.rectangle(W / 2, H / 2, 420, 330, UI_THEME.panel, 0.92).setDepth(40).setStrokeStyle(2, UI_THEME.border, 0.9),
     this.add.rectangle(W / 2, H / 2 - 153, 360, 2, UI_THEME.borderHot, 0.85).setDepth(41),
@@ -1793,7 +1793,7 @@ function renderExplore(scene, c) {
       addButton(scene, c, 380, y + 22, 94, 42, patrolBoss.ap > 0 ? "순찰 시작" : "AP 없음", () => startExploreRun(scene, page * 4 + i), patrolBoss.ap > 0 ? "explore" : "disabled");
     }
   });
-  addPager(scene, c, 620, page, Math.ceil(scene.board.areas.length / 4), (next) => {
+  addPager(scene, c, H - 150, page, Math.ceil(scene.board.areas.length / 4), (next) => {
     scene.board.patrolPage = next;
     renderBoard(scene);
   });
@@ -1991,7 +1991,7 @@ function renderDex(scene, c) {
     addText(scene, c, 92, y + 30, discovered ? `${m.dep} · ${m.el} · ${"★".repeat(m.r)} · Lv.${m.lv}` : "미발견", 12, "#c9c2b8");
     addText(scene, c, 305, y + 30, discovered ? `HP ${m.hp} 공 ${m.at} 방 ${m.df} 민 ${m.sd}` : "영입하면 기록", 11, discovered ? "#8bd17c" : "#777");
   });
-  addPager(scene, c, 690, dungeonNo - 1, data.dungeons.length, (next) => {
+  addPager(scene, c, H - 150, dungeonNo - 1, data.dungeons.length, (next) => {
     scene.board.dexDungeon = next + 1;
     renderBoard(scene);
   });
@@ -2010,7 +2010,7 @@ function helpLines(tab) {
     dungeon: ["던전", "현재 던전 상태와 입주 세력을 확인합니다.", "몬스터와 침입자가 만나면 자동으로 충돌합니다.", "하수인은 별표로 표시됩니다."],
     explore: ["순찰", "하수인을 순찰에 보내 자원과 몬스터를 확보하세요.", "몬스터마다 보이지 않는 성향이 있어 영입 확률이 달라집니다.", "영입 시도에는 실패, 성공, 대성공 결과가 존재합니다."],
     boss: ["하수인", "보유한 하수인의 성장 상태를 확인합니다.", "순찰을 반복하면 경험치가 쌓입니다.", "행동력은 시간이 지나면 다시 충전됩니다."],
-    record: ["도감", "던전에서 발견했거나 영입 가능한 존재를 확인합니다.", "몬스터와 하수인 후보의 기본 능력치를 비교할 수 있습니다.", "나중에는 미발견 대상이 검은 실루엣으로 표시됩니다."],
+    record: ["도감", "영입한 몬스터와 하수인의 정보를 확인합니다.", "기본 능력치와 던전별 출현 대상을 비교할 수 있습니다."],
     settings: ["설정", "소리와 전체화면 상태를 바꿉니다.", "데모 데이터 초기화로 처음 상태를 다시 확인할 수 있습니다.", "보드 화면의 시스템 조작은 이곳에 모았습니다."],
   }[tab] || ["도움말", "현재 화면의 기능을 안내합니다."];
 }
@@ -2220,7 +2220,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826bu", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826ca", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
