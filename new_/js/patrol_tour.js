@@ -679,20 +679,28 @@ function collectNearbyGems(){
   return collected;
 }
 
+function waitTourEnd(title, sub, kind){
+  if(!TOUR)return;
+  TOUR.ending=true;TOUR.awaitingEnd=true;
+  if(TOUR.result)TOUR.result.steps=walkCount;
+  showResultBanner(title, sub, kind);
+  pushMsg('하단의 결과 확인을 누르면 귀환합니다.');
+  refreshUI();
+}
+
 function markWalkCell(){
   const cell=`${px|0},${py|0}`;
   if(cell===lastWalkCell)return false;
   lastWalkCell=cell;walkCount++;
   if(TOUR&&TOUR.maxSteps&&walkCount>=TOUR.maxSteps&&!TOUR.ending){
-    TOUR.ending=true;
     TOUR.result.steps=walkCount;
     TOUR.result.logs.push(`${walkCount}걸음 도달. 순찰을 마치고 귀환했다.`);
-    showResultBanner('순찰 완료', `${walkCount}/${TOUR.maxSteps}걸음`, 'ok');
-    setTimeout(()=>endTour(),900);
+    waitTourEnd('순찰 완료', `${walkCount}/${TOUR.maxSteps}걸음`, 'ok');
   }
   return true;
 }
 function tourWalk(dt){
+  if(TOUR?.ending)return;
   if(!TOUR.path.length){tourPlan();return;}
   let wp=TOUR.path[0];
   while(wp&&Math.hypot(wp.x-px,wp.y-py)<WP_REACH){TOUR.path.shift();wp=TOUR.path[0];}
@@ -824,9 +832,8 @@ function tourUpdate(dt,now){
           if(e.bossHp<=0){
             e.resolved=true;TOUR.result.hp=0;
             TOUR.result.logs.push(`${e.ent.n}와의 전투에서 ${TOUR.bossName||'순찰자'}이 기절했다.`);
-            showResultBanner('기절', `${TOUR.bossName||'순찰자'} 강제 귀환`, 'fail');
-            pushMsg(`${TOUR.bossName||'순찰자'}이 기절했다. 강제 귀환한다.`);
-            TOUR.ending=true;setTimeout(()=>endTour(),1200);return;
+            waitTourEnd('기절', `${TOUR.bossName||'순찰자'} 강제 귀환`, 'fail');
+            return;
           }
           e.turn='boss';e.turnWait=0.45;
         }
@@ -1342,6 +1349,8 @@ async function reqWakeLock(){try{await navigator.wakeLock?.request('screen');}ca
    ============================================================ */
 const $=id=>document.getElementById(id);
 function refreshUI(){
+  const exitBtn=document.getElementById('tourExit');
+  if(exitBtn)exitBtn.textContent=TOUR?.awaitingEnd?'결과 확인':'⏹ 순찰 종료';
   const inGame=(gameState==='play'||gameState==='pause');
   $('menuBtn').classList.toggle('hidden',!inGame);
   $('ctlLayer').classList.toggle('hidden',!(inGame&&showCtl));

@@ -1,9 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
- * PIXEL DUNGEON CODEX — 병합 준비 버전 (원본 무수정)
- *  - IIFE 캡슐화: 내부 심볼이 전역으로 새지 않음
- *  - 외부 API: window.PixelCodex.{init,setMode,openDlg,getFrames,getEntity,
- *              buildGrid,blit,state,DATA}
- * ═══════════════════════════════════════════════════════════ */
 var PixelCodex=(function(){
 'use strict';
 
@@ -373,8 +367,40 @@ hero:function(g,p,o,f){f=f||0;o=o||{};
 }
 };
 
+/* ═══ UI 아이콘 종 함수 (정지 · f 미사용) ═══ */
+SP.ic_home=function(g,p){
+ rc(g,23,5,3,4,p.s);poly(g,[[16,3],[29,15],[3,15]],p.b);hl(g,4,27,15,p.h);
+ rc(g,7,15,18,13,p.sec);rc(g,13,19,6,9,p.m);put(g,17,23,p.acc);
+ rc(g,9,18,3,3,'#ffffff');rc(g,20,18,3,3,'#ffffff');
+};
+SP.ic_mon=function(g,p){
+ poly(g,[[7,8],[3,3],[5,13]],p.s);poly(g,[[25,8],[29,3],[27,13]],p.s);
+ el(g,16,17,11,10,p.b);rc(g,7,18,18,7,p.b);el(g,16,25,8,3,p.s);
+ rc(g,10,15,4,3,'#ffffff');rc(g,19,15,4,3,'#ffffff');put(g,13,17,p.acc);put(g,19,17,p.acc);
+ hl(g,12,20,22,p.m);put(g,14,23,'#ffffff');put(g,18,23,'#ffffff');
+ rc(g,8,11,16,2,p.h);
+};
+SP.ic_codex=function(g,p){var L='#a89f88';
+ poly(g,[[16,9],[29,13],[29,26],[16,22],[3,26],[3,13]],p.b);
+ poly(g,[[16,8],[27,12],[27,24],[16,20],[5,24],[5,12]],p.sec);
+ vl(g,15,9,20,'#d8d0bc');vl(g,16,9,20,'#cfc6b0');
+ hl(g,7,13,13,L);hl(g,7,13,16,L);hl(g,8,12,19,L);hl(g,18,24,13,L);hl(g,18,24,16,L);hl(g,19,23,19,L);
+ poly(g,[[22,9],[25,10],[25,16],[23,14],[21,16]],p.acc);
+};
+SP.ic_patrol=function(g,p){
+ el(g,16,16,12,12,'#5f4632');el(g,16,16,10,10,p.sec);
+ put(g,16,6,p.b);put(g,16,26,p.b);put(g,6,16,p.b);put(g,26,16,p.b);
+ poly(g,[[16,7],[19,16],[13,16]],p.acc);poly(g,[[16,25],[19,16],[13,16]],'#8a93a5');el(g,16,16,2,2,p.b);
+};
+SP.ic_set=function(g,p){var G=p.b;
+ rc(g,14,4,4,4,G);rc(g,14,24,4,4,G);rc(g,4,14,4,4,G);rc(g,24,14,4,4,G);
+ rc(g,8,8,4,4,G);rc(g,20,8,4,4,G);rc(g,8,20,4,4,G);rc(g,20,20,4,4,G);
+ el(g,16,16,9,9,G);el(g,16,16,4.5,4.5,null);el(g,16,16,2.5,2.5,p.acc);hl(g,11,13,8,'#d7dce4');
+};
+
 /* ===== 애니메이션 빌드 ===== */
 var FLY={ghost:1,flame:1,eye:1,fish:1,bat:1,kraken:1};
+var STATIC={ic_home:1,ic_mon:1,ic_codex:1,ic_patrol:1,ic_set:1};
 function shift(g,dx,dy){var out=mkG(),y,x;
  for(y=0;y<H;y++)for(x=0;x<W;x++)
   out[y][x]=(g[y-dy]&&g[y-dy][x-dx])||null;
@@ -391,10 +417,13 @@ function build(m,f){f=f||0;
  if(m.sp==='robed'){SP.robed(g,p,Object.assign({undead:true},o),f);}
  else if(m.sp){SP[m.sp](g,p,o,f);}
  else{SP.hero(g,p,o,f);}   /* 직업 캐릭터(sp 없음)는 hero로 그림 */
- lightShade(g,p);
- if(FLY[m.sp]){g=shift(g,0,[0,-1,-1,0][f]);}
- else{g=squish(g,[0,0.07,0,-0.06][f]);}
- outline(g,p.out);return g;}
+ if(!STATIC[m.sp]){
+  lightShade(g,p);
+  if(FLY[m.sp]){g=shift(g,0,[0,-1,-1,0][f]);}
+  else{g=squish(g,[0,0.07,0,-0.06][f]);}
+  outline(g,p.out);
+ }
+ return g;}
 
 /* ===== 데이터: 던전 10 ===== */
 var DG=[
@@ -506,6 +535,15 @@ var J=[
 {"n":"해적","role":"근접 난타","cat":"근접","diff":2,"c":["#c94f4f","#f0c040","#8f3030"],"o":{"hairstyle":"long","hairC":"#3f2f1f","hat":"bandana","pirate":1,"eyepatch":1,"weapon":"sword"},"hp":125,"at":16,"df":9,"sd":8,"t":"나쁜 짐 — 골드 획득 1.5배","t2":"포격 요청 — 무작위 지역 폭격 3회"}
 ];
 
+/* ===== 데이터: UI 아이콘 (id: 301~ 예약) ===== */
+var IC=[
+{"n":"던전","sp":"ic_home","c":["#e06a50","#f5c542","#d9cfb8"]},
+{"n":"하수인","sp":"ic_mon","c":["#d94f4f","#f5c542","#efe9da"]},
+{"n":"도감","sp":"ic_codex","c":["#7a5a38","#f5c542","#efe9da"]},
+{"n":"순찰","sp":"ic_patrol","c":["#c9a13b","#d94f4f","#efe9da"]},
+{"n":"설정","sp":"ic_set","c":["#9aa2ad","#f5c542","#5f6a78"]}
+];
+
 /* ===== 렌더링 상수 ===== */
 var ELC={"무관":"#9aa2ad","독":"#9a59d9","화염":"#e0603f","냉기":"#5fc0e8","번개":"#e8c84f",
  "어둠":"#6a4f9a","자연":"#5fbf6a","땅":"#a97c50","금속":"#8a97a8","바람":"#6fc9a8",
@@ -538,6 +576,7 @@ function blit(cv,frame){
 function findAny(id){var i;
  for(i=0;i<M.length;i++)if(M[i].id===id)return M[i];
  for(i=0;i<J.length;i++)if(J[i].id===id)return J[i];
+ for(i=0;i<IC.length;i++)if(IC[i].id===id)return IC[i];
  return null;}
 function cp(m){return Math.round(m.hp/8+m.at*1.5+m.df*1.2+m.sd);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
@@ -762,11 +801,11 @@ function startLoop(){
  })(0);
 }
 
-/* ═══════════════════════════════════════════
+/* ═════════════════════════════════════════════
  * 공개 초기화 함수 — 호스트 코드에서 호출
  *   PixelCodex.init()        : 문서의 첫 .pdcx 사용
  *   PixelCodex.init(element) : 지정 루트 사용
- * ═══════════════════════════════════════════ */
+ * ═════════════════════════════════════════════ */
 function init(root){
  if(inited){console.warn('[PixelCodex] 이미 초기화됨 — 다중 인스턴스 미지원');return;}
  ROOT=root||document.querySelector('.pdcx');
@@ -778,6 +817,7 @@ function init(root){
  /* ID 자동 부여 (몬스터 1~, 직업 101~ — 몬스터 100종 미만 유지할 것) */
  M.forEach(function(m,i){m.id=i+1;});
  J.forEach(function(j,i){j.id=101+i;});
+ IC.forEach(function(c,i){c.id=301+i;});
  /* 탭 바인딩 */
  Array.prototype.forEach.call(ROOT.querySelectorAll('.pdcx-tabs .chip'),function(b){
   b.onclick=function(){
@@ -793,6 +833,10 @@ function init(root){
  startLoop();
 }
 
+M.forEach(function(m,i){m.id=i+1;});
+J.forEach(function(j,i){j.id=101+i;});
+IC.forEach(function(c,i){c.id=301+i;});
+
 /* ===== 외부 API 노출 ===== */
 return {
  init:init,                                   /* UI 초기화 (필수, 1회) */
@@ -805,18 +849,6 @@ return {
   return m?build(m,f||0):null;},
  blit:blit,                                   /* (canvas, frame) 화면 전송 */
  state:state,                                 /* UI 상태 (tab/dun/cat/mode/sort/q) */
- DATA:{monsters:M,jobs:J,dungeons:DG,CATS:CATS,CATC:CATC,ELC:ELC,FLY:FLY,SP:SP}
+ DATA:{monsters:M,jobs:J,dungeons:DG,icons:IC,CATS:CATS,CATC:CATC,ELC:ELC,FLY:FLY,SP:SP}
 };
-})();
-
-/* ── Codex 기동: 도감 UI는 숨긴 채 스프라이트 공급자로만 사용 ──
-   init은 무거운 베이크 작업을 수반하므로 idle 시점으로 지연 */
-(function(){
-  function boot(){
-    try{
-      PixelCodex.init(document.querySelector('.pdcx'));
-      PixelCodex.setMode('off');   /* 내부 rAF 루프 휴면 — 메인 루프 단일화 유지 */
-    }catch(e){console.warn('[PixelCodex] init 실패 — 조우 투어 비활성',e);}
-  }
-  boot();
-})();
+})()

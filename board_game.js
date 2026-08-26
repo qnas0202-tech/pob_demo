@@ -1576,6 +1576,12 @@ function updateBoard(scene, dt) {
   renderBoard(scene);
 }
 
+function addResourceChip(scene, c, x, y, w, label, value, color) {
+  addRect(scene, c, x, y, w, 28, 0x111714, 1, 0x3a463d);
+  addText(scene, c, x + 10, y + 6, label, 11, "#8c968f");
+  addText(scene, c, x + w - 10, y + 5, String(value), 14, color).setOrigin(1, 0);
+}
+
 function renderBoard(scene) {
   scene.soundToggle?.setVisible(false).disableInteractive();
   scene.fullscreenToggle?.setVisible(false).disableInteractive();
@@ -1586,9 +1592,10 @@ function renderBoard(scene) {
   addRect(scene, c, 0, 0, W, H, UI_THEME.bg, 1);
   const hideHud = b.step === "intro" || b.step === "choose" || b.step === "chosen";
   if (!hideHud) {
-    addText(scene, c, 18, 18, `악명 ${b.dungeon.notoriety}`, 15, "#d68cff");
-    addText(scene, c, 150, 18, `Soul ${b.dungeon.soul}`, 15, "#f0c45c");
-    addText(scene, c, 285, 18, `Gem ${b.dungeon.gem}`, 15, "#7fd8ff");
+    addRect(scene, c, 12, 10, 516, 44, 0x060807, 0.94, 0x2f3a32);
+    addResourceChip(scene, c, 22, 18, 122, "악명", b.dungeon.notoriety, "#d68cff");
+    addResourceChip(scene, c, 156, 18, 132, "Soul", b.dungeon.soul, "#f0c45c");
+    addResourceChip(scene, c, 300, 18, 122, "Gem", b.dungeon.gem, "#7fd8ff");
   }
   if (b.step === "intro") return renderIntro(scene, c);
   if (b.step === "choose") return renderChoose(scene, c);
@@ -2021,8 +2028,11 @@ function renderHelpModal(scene, c, tab) {
 }
 
 function renderTabs(scene, c) {
-  [["던전","dungeon"],["하수인","boss"],["순찰","explore"],["도감","record"],["설정","settings"]].forEach(([label, tab], i) => {
-    addButton(scene, c, 14 + i * 103, H - 86, 94, 58, label, () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab ? "tabActive" : "tab");
+  [["던전","dungeon",301],["하수인","boss",302],["순찰","explore",304],["도감","record",303],["설정","settings",305]].forEach(([label, tab, icon], i) => {
+    const x = 14 + i * 103, y = H - 86;
+    addButton(scene, c, x, y, 94, 58, "", () => { scene.board.tab = tab; renderBoard(scene); }, scene.board.tab === tab ? "tabActive" : "tab");
+    addCodexSprite(scene, c, icon, x + 47, y + 19, 1.05);
+    addText(scene, c, x + 47, y + 45, label, 11, scene.board.tab === tab ? UI_THEME.gold : UI_THEME.muted).setOrigin(0.5);
   });
 }
 
@@ -2211,7 +2221,7 @@ function openComppTour(scene) {
   const run = scene.board?.exploreRun;
   const dungeonNo = run ? scene.board.areas[run.idx]?.dungeonNo || 1 : 1;
   const boss = run?.boss;
-  const qs = new URLSearchParams({ v: "20260826bl", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
+  const qs = new URLSearchParams({ v: "20260826br", dungeon: dungeonNo, boss: boss?.name || "순찰자", hp: boss?.hp || 90, maxHp: boss?.maxHp || 90, atk: boss?.atk || 18, def: boss?.def || 0, maxSteps: run?.maxSteps || 64 });
   frame.src = `new_/patrol_tour.html?${qs.toString()}`;
   frame.title = "BOARD-TOUR patrol";
   Object.assign(frame.style, {
